@@ -51,26 +51,47 @@ function (dojo, declare, gamegui, counter) {
 
             gameArea.insertAdjacentHTML('beforeend', '<div id="player-tables"></div>');
 
-            //add solar rows
+            //solar deck
+            gameArea.insertAdjacentHTML('beforeend', 
+             '<div id="solar-area">' +
+                '<div id="solar-top-row" class="solar-row full-row">' +
+                    '<div id="discard-pile" class="pile discard-pile"></div>' +
+                    '<div id="solar-deck" class="pile solar-deck"></div>' +
+                    '<div id="solar-row-1" class="solar-row-cards"></div>' +
+                '</div>' +
+                '<div id="solar-bottom-row" class="solar-row full-row">' +
+                //'<div class="spacer"></div>' +
+                    '<div id="solar-row-2" class="solar-row-cards"></div>' +
+                '</div>' +
+            '</div>'
+            );
+
+            /*add solar rows
             gameArea.insertAdjacentHTML('beforeend',
                 '<div id="solar-rows">' +
                     '<div id="solar-row-1" class="solar-row"></div>' +
                     '<div id="solar-row-2" class="solar-row"></div>' +
                 '</div>'
-            );
+            );*/
 
+            // Display 1 card in discard
+            if (gamedatas.discardPile) {
+                Object.values(gamedatas.discardPile).forEach(card =>
+                    this.addCardToDiscard(card)
+                );
+            }
             // Display Solar Row 1
             if (gamedatas.solarRow1) {
-                Object.values(gamedatas.solarRow1).forEach(dojo.hitch(this, function(card) {
-                    this.addCardToRow(card, 1);
-                }));
+                Object.values(gamedatas.solarRow1).forEach(card =>
+                    this.addCardToRow(card, 1)
+                );
             }
 
             // Display Solar Row 2
             if (gamedatas.solarRow2) {
-                Object.values(gamedatas.solarRow2).forEach(dojo.hitch(this, function(card) {
-                    this.addCardToRow(card, 2);
-                }));
+                Object.values(gamedatas.solarRow2).forEach(card =>
+                    this.addCardToRow(card, 2)
+                );
             }
 
             // Player boards (keep it simple for now)
@@ -193,6 +214,24 @@ function (dojo, declare, gamegui, counter) {
             script.
         
         */
+        addCardToDiscard: function(card) {
+            var container = document.getElementById('discard-pile');
+
+            if (!container) {
+                console.error("Discard pile container missing");
+                return;
+            }
+
+            var cardDiv = dojo.create("div", {
+                id: 'discard_' + card.id,
+                'class': 'card card_' + card.type_arg
+            }, container);
+
+            dojo.connect(cardDiv, "onclick", dojo.hitch(this, function () {
+                console.log("Clicked discard pile card", card.id);
+            }));
+        },
+
        
         addCardToRow: function(card, rowNumber) {
             if (!card) {
@@ -210,7 +249,7 @@ function (dojo, declare, gamegui, counter) {
 
             var cardDiv = dojo.create("div", {
                 id: 'card_' + card.id,
-                'class': 'card card_' + card.type_arg  // <-- match CSS
+                'class': 'card card_' + card.type_arg
             }, container);
 
             dojo.connect(cardDiv, "onclick", dojo.hitch(this, function () {

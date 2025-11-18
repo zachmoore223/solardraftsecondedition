@@ -30,6 +30,7 @@ class Game extends \Bga\GameFramework\Table
 
     public $cards;
     const LOCATION_DECK = 'deck';
+    const LOCATION_DISCARD = 'discardPile';
     const LOCATION_SOLARROW1 = 'solar1';
     const LOCATION_SOLARROW2 = 'solar2';
 
@@ -265,11 +266,11 @@ class Game extends \Bga\GameFramework\Table
         $this->playerEnergy->fillResult($result);
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
-       
-        
+        $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
         $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
 
+        $result['discardPile'] = $this->enrichCards($discardPile);
         $result['solarRow1'] = $this->enrichCards($solarRow1);
         $result['solarRow2'] = $this->enrichCards($solarRow2);
 
@@ -359,11 +360,15 @@ class Game extends \Bga\GameFramework\Table
 
         $this->cards->createCards($solarCards, 'deck');
         $this->cards->shuffle('deck');
+
+        //put 3 cards in each solar row
         for ($i = 0; $i < 3; $i++) {
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW1, $i);
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW2, $i);
         }
 
+        //put a card in the discard pile
+        $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 1);
 
         // Activate first player once everything has been initialized and ready.
         $this->activeNextPlayer();

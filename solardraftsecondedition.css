@@ -47,15 +47,38 @@
 
 
 /********* You can start writing your CSS below this line: **********/
-#solar-rows {
-    margin-top: 20px;
+#solar-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
 }
 
-.solar-row {
+.full-row {
     display: flex;
     flex-direction: row;
-    gap: 5px;
-    margin-bottom: 5px;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.pile {
+    width: 150px;
+    height: 236px;
+    border: 2px solid #444;
+    border-radius: 10px;
+    background-color: rgba(255, 255, 255, 0.05);
+    position: relative;
+}
+
+.solar-row-cards {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+}
+
+#solar-row-2 {
+    margin-left: 325px; /* aligns with start of solar row 1 */
 }
 
 .card {
@@ -63,6 +86,13 @@
     height: 236px;
     background-image: url('img/cards.png');
     background-size: 1500px 2600px;
+    transition: transform 0.2s ease;
+    cursor: pointer;
+}
+
+.card:hover {
+    transform: scale(1.35);   /* zoom in */
+    z-index: 50;              /* bring card to front */
 }
 
 /* ROW 0 — cards 1–10 */
@@ -101,7 +131,6 @@
 .card_29 { background-position: -1200px -472px; }
 .card_30 { background-position: -1350px -472px; }
 
-
 /* ROW 3 — cards 31–40 */
 .card_31 { background-position: 0px -709px; }
 .card_32 { background-position: -150px -709px; }
@@ -113,7 +142,6 @@
 .card_38 { background-position: -1050px -709px; }
 .card_39 { background-position: -1200px -709px; }
 .card_40 { background-position: -1350px -709px; }
-
 
 /* ROW 4 — cards 41–50 */
 .card_41 { background-position: 0px -946px; }
@@ -127,7 +155,6 @@
 .card_49 { background-position: -1200px -946px; }
 .card_50 { background-position: -1350px -946px; }
 
-
 /* ROW 5 — cards 51–60 */
 .card_51 { background-position: 0px -1182px; }
 .card_52 { background-position: -150px -1182px; }
@@ -140,7 +167,6 @@
 .card_59 { background-position: -1200px -1182px; }
 .card_60 { background-position: -1350px -1182px; }
 
-
 /* ROW 6 — cards 61–70 (COMETS) */
 .card_61 { background-position: 0px -1418px; }
 .card_62 { background-position: -150px -1418px; }
@@ -152,7 +178,6 @@
 .card_68 { background-position: -1050px -1418px; }
 .card_69 { background-position: -1200px -1418px; }
 .card_70 { background-position: -1350px -1418px; }
-
 
 /* ROW 7 — cards 71–80 */
 .card_71 { background-position: 0px -1655px; }
@@ -178,7 +203,6 @@
 .card_89 { background-position: -1200px -1891px; }
 .card_90 { background-position: -1350px -1891px; }
 
-
 /* ROW 9 — cards 91–100 (Moons) */
 .card_91 { background-position: 0px -2127px; }
 .card_92 { background-position: -150px -2127px; }
@@ -190,7 +214,6 @@
 .card_98 { background-position: -1050px -2127px; }
 .card_99 { background-position: -1200px -2127px; }
 .card_100 { background-position: -1350px -2127px; }
-
 
 /* ROW 10 — cards 101–110 (Moons) */
 .card_101 { background-position: 0px -2364px; }
