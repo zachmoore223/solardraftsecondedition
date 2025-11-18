@@ -54,27 +54,28 @@
 .solar-row {
     display: flex;
     flex-direction: row;
-    gap: 10px;
-    margin-bottom: 20px;
+    gap: 5px;
+    margin-bottom: 5px;
 }
 
 .card {
-    width: 250px;
-    height: 394px;
+    width: 150px;          
+    height: 236px;
     background-image: url('img/cards.png');
-    background-size: 2500px 4334px; /* 10 columns × 250, 11 rows × 394 */
+    background-size: 1500px 2600px;
 }
+
 /* ROW 0 — cards 1–10 */
 .card_1 { background-position: 0px 0px; }
-.card_2 { background-position: -250px 0px; }
-.card_3 { background-position: -500px 0px; }
-.card_4 { background-position: -750px 0px; }
-.card_5 { background-position: -1000px 0px; }
-.card_6 { background-position: -1250px 0px; }
-.card_7 { background-position: -1500px 0px; }
-.card_8 { background-position: -1750px 0px; }
-.card_9 { background-position: -2000px 0px; }
-.card_10 { background-position: -2250px 0px; }
+.card_2 { background-position: -150px 0px; }
+.card_3 { background-position: -300px 0px; }
+.card_4 { background-position: -450px 0px; }
+.card_5 { background-position: -600px 0px; }
+.card_6 { background-position: -750px 0px; }
+.card_7 { background-position: -900px 0px; }
+.card_8 { background-position: -1050px 0px; }
+.card_9 { background-position: -1200px 0px; }
+.card_10 { background-position: -1350px 0px; }
 
 /* ROW 1 — cards 11–20 */
 .card_11 { background-position: 0px -394px; }
@@ -89,112 +90,120 @@
 .card_20 { background-position: -2250px -394px; }
 
 /* ROW 2 — cards 21–30 */
-.card_21 { background-position: 0px -788px; }
-.card_22 { background-position: -250px -788px; }
-.card_23 { background-position: -500px -788px; }
-.card_24 { background-position: -750px -788px; }
-.card_25 { background-position: -1000px -788px; }
-.card_26 { background-position: -1250px -788px; }
-.card_27 { background-position: -1500px -788px; }
-.card_28 { background-position: -1750px -788px; }
-.card_29 { background-position: -2000px -788px; }
-.card_30 { background-position: -2250px -788px; }
+.card_21 { background-position: 0px -472px; }
+.card_22 { background-position: -150px -472px; }
+.card_23 { background-position: -300px -472px; }
+.card_24 { background-position: -450px -472px; }
+.card_25 { background-position: -600px -472px; }
+.card_26 { background-position: -750px -472px; }
+.card_27 { background-position: -900px -472px; }
+.card_28 { background-position: -1050px -472px; }
+.card_29 { background-position: -1200px -472px; }
+.card_30 { background-position: -1350px -472px; }
+
 
 /* ROW 3 — cards 31–40 */
-.card_31 { background-position: 0px -1182px; }
-.card_32 { background-position: -250px -1182px; }
-.card_33 { background-position: -500px -1182px; }
-.card_34 { background-position: -750px -1182px; }
-.card_35 { background-position: -1000px -1182px; }
-.card_36 { background-position: -1250px -1182px; }
-.card_37 { background-position: -1500px -1182px; }
-.card_38 { background-position: -1750px -1182px; }
-.card_39 { background-position: -2000px -1182px; }
-.card_40 { background-position: -2250px -1182px; }
+.card_31 { background-position: 0px -709px; }
+.card_32 { background-position: -150px -709px; }
+.card_33 { background-position: -300px -709px; }
+.card_34 { background-position: -450px -709px; }
+.card_35 { background-position: -600px -709px; }
+.card_36 { background-position: -750px -709px; }
+.card_37 { background-position: -900px -709px; }
+.card_38 { background-position: -1050px -709px; }
+.card_39 { background-position: -1200px -709px; }
+.card_40 { background-position: -1350px -709px; }
+
 
 /* ROW 4 — cards 41–50 */
-.card_41 { background-position: 0px -1576px; }
-.card_42 { background-position: -250px -1576px; }
-.card_43 { background-position: -500px -1576px; }
-.card_44 { background-position: -750px -1576px; }
-.card_45 { background-position: -1000px -1576px; }
-.card_46 { background-position: -1250px -1576px; }
-.card_47 { background-position: -1500px -1576px; }
-.card_48 { background-position: -1750px -1576px; }
-.card_49 { background-position: -2000px -1576px; }
-.card_50 { background-position: -2250px -1576px; }
+.card_41 { background-position: 0px -946px; }
+.card_42 { background-position: -150px -946px; }
+.card_43 { background-position: -300px -946px; }
+.card_44 { background-position: -450px -946px; }
+.card_45 { background-position: -600px -946px; }
+.card_46 { background-position: -750px -946px; }
+.card_47 { background-position: -900px -946px; }
+.card_48 { background-position: -1050px -946px; }
+.card_49 { background-position: -1200px -946px; }
+.card_50 { background-position: -1350px -946px; }
+
 
 /* ROW 5 — cards 51–60 */
-.card_51 { background-position: 0px -1970px; }
-.card_52 { background-position: -250px -1970px; }
-.card_53 { background-position: -500px -1970px; }
-.card_54 { background-position: -750px -1970px; }
-.card_55 { background-position: -1000px -1970px; }
-.card_56 { background-position: -1250px -1970px; }
-.card_57 { background-position: -1500px -1970px; }
-.card_58 { background-position: -1750px -1970px; }
-.card_59 { background-position: -2000px -1970px; }
-.card_60 { background-position: -2250px -1970px; }
+.card_51 { background-position: 0px -1182px; }
+.card_52 { background-position: -150px -1182px; }
+.card_53 { background-position: -300px -1182px; }
+.card_54 { background-position: -450px -1182px; }
+.card_55 { background-position: -600px -1182px; }
+.card_56 { background-position: -750px -1182px; }
+.card_57 { background-position: -900px -1182px; }
+.card_58 { background-position: -1050px -1182px; }
+.card_59 { background-position: -1200px -1182px; }
+.card_60 { background-position: -1350px -1182px; }
+
 
 /* ROW 6 — cards 61–70 (COMETS) */
-.card_61 { background-position: 0px -2364px; }
-.card_62 { background-position: -250px -2364px; }
-.card_63 { background-position: -500px -2364px; }
-.card_64 { background-position: -750px -2364px; }
-.card_65 { background-position: -1000px -2364px; }
-.card_66 { background-position: -1250px -2364px; }
-.card_67 { background-position: -1500px -2364px; }
-.card_68 { background-position: -1750px -2364px; }
-.card_69 { background-position: -2000px -2364px; }
-.card_70 { background-position: -2250px -2364px; }
+.card_61 { background-position: 0px -1418px; }
+.card_62 { background-position: -150px -1418px; }
+.card_63 { background-position: -300px -1418px; }
+.card_64 { background-position: -450px -1418px; }
+.card_65 { background-position: -600px -1418px; }
+.card_66 { background-position: -750px -1418px; }
+.card_67 { background-position: -900px -1418px; }
+.card_68 { background-position: -1050px -1418px; }
+.card_69 { background-position: -1200px -1418px; }
+.card_70 { background-position: -1350px -1418px; }
+
 
 /* ROW 7 — cards 71–80 */
-.card_71 { background-position: 0px -2758px; }
-.card_72 { background-position: -250px -2758px; }
-.card_73 { background-position: -500px -2758px; }
-.card_74 { background-position: -750px -2758px; }
-.card_75 { background-position: -1000px -2758px; }
-.card_76 { background-position: -1250px -2758px; }
-.card_77 { background-position: -1500px -2758px; }
-.card_78 { background-position: -1750px -2758px; }
-.card_79 { background-position: -2000px -2758px; }
-.card_80 { background-position: -2250px -2758px; }
+.card_71 { background-position: 0px -1655px; }
+.card_72 { background-position: -150px -1655px; }
+.card_73 { background-position: -300px -1655px; }
+.card_74 { background-position: -450px -1655px; }
+.card_75 { background-position: -600px -1655px; }
+.card_76 { background-position: -750px -1655px; }
+.card_77 { background-position: -900px -1655px; }
+.card_78 { background-position: -1050px -1655px; }
+.card_79 { background-position: -1200px -1655px; }
+.card_80 { background-position: -1350px -1655px; }
 
 /* ROW 8 — cards 81–90 (final comets + first moons) */
-.card_81 { background-position: 0px -3152px; }
-.card_82 { background-position: -250px -3152px; }
-.card_83 { background-position: -500px -3152px; }
-.card_84 { background-position: -750px -3152px; }
-.card_85 { background-position: -1000px -3152px; }
-.card_86 { background-position: -1250px -3152px; }
-.card_87 { background-position: -1500px -3152px; }
-.card_88 { background-position: -1750px -3152px; }
-.card_89 { background-position: -2000px -3152px; }
-.card_90 { background-position: -2250px -3152px; }
+.card_81 { background-position: 0px -1891px; }
+.card_82 { background-position: -150px -1891px; }
+.card_83 { background-position: -300px -1891px; }
+.card_84 { background-position: -450px -1891px; }
+.card_85 { background-position: -600px -1891px; }
+.card_86 { background-position: -750px -1891px; }
+.card_87 { background-position: -900px -1891px; }
+.card_88 { background-position: -1050px -1891px; }
+.card_89 { background-position: -1200px -1891px; }
+.card_90 { background-position: -1350px -1891px; }
+
 
 /* ROW 9 — cards 91–100 (Moons) */
-.card_91 { background-position: 0px -3546px; }
-.card_92 { background-position: -250px -3546px; }
-.card_93 { background-position: -500px -3546px; }
-.card_94 { background-position: -750px -3546px; }
-.card_95 { background-position: -1000px -3546px; }
-.card_96 { background-position: -1250px -3546px; }
-.card_97 { background-position: -1500px -3546px; }
-.card_98 { background-position: -1750px -3546px; }
-.card_99 { background-position: -2000px -3546px; }
-.card_100 { background-position: -2250px -3546px; }
+.card_91 { background-position: 0px -2127px; }
+.card_92 { background-position: -150px -2127px; }
+.card_93 { background-position: -300px -2127px; }
+.card_94 { background-position: -450px -2127px; }
+.card_95 { background-position: -600px -2127px; }
+.card_96 { background-position: -750px -2127px; }
+.card_97 { background-position: -900px -2127px; }
+.card_98 { background-position: -1050px -2127px; }
+.card_99 { background-position: -1200px -2127px; }
+.card_100 { background-position: -1350px -2127px; }
+
 
 /* ROW 10 — cards 101–110 (Moons) */
-.card_101 { background-position: 0px -3940px; }
-.card_102 { background-position: -250px -3940px; }
-.card_103 { background-position: -500px -3940px; }
-.card_104 { background-position: -750px -3940px; }
-.card_105 { background-position: -1000px -3940px; }
-.card_106 { background-position: -1250px -3940px; }
-.card_107 { background-position: -1500px -3940px; }
-.card_108 { background-position: -1750px -3940px; }
-.card_109 { background-position: -2000px -3940px; }
-.card_110 { background-position: -2250px -3940px; }
+.card_101 { background-position: 0px -2364px; }
+.card_102 { background-position: -150px -2364px; }
+.card_103 { background-position: -300px -2364px; }
+.card_104 { background-position: -450px -2364px; }
+.card_105 { background-position: -600px -2364px; }
+.card_106 { background-position: -750px -2364px; }
+.card_107 { background-position: -900px -2364px; }
+.card_108 { background-position: -1050px -2364px; }
+.card_109 { background-position: -1200px -2364px; }
+.card_110 { background-position: -1350px -2364px; }
+
 
 
 
