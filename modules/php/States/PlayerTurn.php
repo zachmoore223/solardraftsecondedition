@@ -80,8 +80,11 @@ class PlayerTurn extends GameState
      * by the action trigger on the front side with `bgaPerformAction`.
      */
     #[PossibleAction]
-    public function actDraft(int $activePlayerId)
+    public function actDraftCard(int $card_id, int $activePlayerId, array $args)
     {
+        // Add your game logic to draw a card here.
+        $card_name = Game::$cards[$card_id]['card_name'];
+
         // Notify all players about the choice to draft - will need to add which card is drafted.
         $this->notify->all("draft", clienttranslate('${player_name} drafts'), [
             "player_id" => $activePlayerId,
@@ -91,6 +94,35 @@ class PlayerTurn extends GameState
         // at the end of the action, move to the next state
         return NextPlayer::class;
     }
+
+    /**
+     * DRAW ACTION
+     *
+     * In this scenario, each time a player DRAFTS, this method will be called. This method is called directly
+     * by the action trigger on the front side with `bgaPerformAction`.
+     */
+    #[PossibleAction]
+    public function actDrawCard(int $card_id, int $activePlayerId, array $args)
+    {
+        /* check input values
+        $playableCardsIds = $args['playableCardsIds'];
+        if (!in_array($card_id, $playableCardsIds)) {
+            throw new UserException('Invalid card choice');
+        } */
+
+        // Add your game logic to draw a card here.
+        $card_name = Game::$cards[$card_id]['card_name'];
+
+        // Notify all players about the choice to draft - will need to add which card is drafted.
+        $this->notify->all("draw", clienttranslate('${player_name} draws'), [
+            "player_id" => $activePlayerId,
+            "player_name" => $this->game->getPlayerNameById($activePlayerId), // remove this line if you uncomment notification decorator
+        ]);
+
+        // at the end of the action, move to the next state
+        return NextPlayer::class;
+    }
+
 
     /**
      * END TURN (PASS)
@@ -114,6 +146,8 @@ class PlayerTurn extends GameState
         // at the end of the action, move to the next state
         return NextPlayer::class;
     }
+
+    
 
     /**
      * This method is called each time it is the turn of a player who has quit the game (= "zombie" player).

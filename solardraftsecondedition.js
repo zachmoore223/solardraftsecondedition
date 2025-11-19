@@ -51,6 +51,10 @@ function (dojo, declare, gamegui, counter) {
 
             gameArea.insertAdjacentHTML('beforeend', '<div id="player-tables"></div>');
 
+            /*************************************************
+            * DECK, DISCARD, AND SOLAR ROWS
+            *************************************************/
+
             //solar deck
             gameArea.insertAdjacentHTML('beforeend', 
              '<div id="solar-area">' +
@@ -65,14 +69,6 @@ function (dojo, declare, gamegui, counter) {
                 '</div>' +
             '</div>'
             );
-
-            /*add solar rows
-            gameArea.insertAdjacentHTML('beforeend',
-                '<div id="solar-rows">' +
-                    '<div id="solar-row-1" class="solar-row"></div>' +
-                    '<div id="solar-row-2" class="solar-row"></div>' +
-                '</div>'
-            );*/
 
             // Display 1 card in discard
             if (gamedatas.discardPile) {
@@ -94,6 +90,22 @@ function (dojo, declare, gamegui, counter) {
                 );
             }
 
+            /*************************************************
+            * PLAYER'S HAND
+            *************************************************/
+            gameArea.insertAdjacentHTML('beforeend', `
+                <div id="player-hand" class="player-hand"></div>
+            `);
+
+            if (gamedatas.hand) {
+                Object.values(gamedatas.hand).forEach(card =>
+                    this.addCardToHand(card)
+                );
+            }
+
+            /*************************************************
+            * PLAYER SOLAR SYSTEMS
+            *************************************************/
             // Player boards (keep it simple for now)
             for (var playerId in gamedatas.players) {
                 if (!gamedatas.players.hasOwnProperty(playerId)) continue;
@@ -257,7 +269,6 @@ function (dojo, declare, gamegui, counter) {
             }));
         },
 
-
         setCardImage: function(div, card) {
             div.style.backgroundImage = "url('img/cards.png')";
 
@@ -270,6 +281,24 @@ function (dojo, declare, gamegui, counter) {
             div.style.width = cardWidth + "px";
             div.style.height = "350px"; // adjust to your sprite height
         },
+
+        addCardToHand: function(card) {
+            var hand = document.getElementById('player-hand');
+
+            var wrapper = dojo.create("div", {
+                class: "card-wrapper"
+            }, hand);
+
+            dojo.create("div", {
+                id: 'card_' + card.id,
+                class: 'card card_' + card.type_arg00000000000000000000000
+            }, wrapper);
+
+            dojo.connect(wrapper, "onclick", dojo.hitch(this, function() {
+                this.onCardClick(card.id);
+            }));
+        },
+
 
 
 

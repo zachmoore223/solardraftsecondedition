@@ -269,7 +269,9 @@ class Game extends \Bga\GameFramework\Table
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
         $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
+        
 
+        $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['discardPile'] = $this->enrichCards($discardPile);
         $result['solarRow1'] = $this->enrichCards($solarRow1);
         $result['solarRow2'] = $this->enrichCards($solarRow2);
@@ -410,9 +412,6 @@ class Game extends \Bga\GameFramework\Table
         $this->cards->moveCard($card['id'], 'hand', $playerId);
     }     
     */
-
-
-
 
     /*************************************************
      *               CARD INFO HELPERS                
