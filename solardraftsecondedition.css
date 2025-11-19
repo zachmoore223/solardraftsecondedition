@@ -47,6 +47,8 @@
 
 
 /********* You can start writing your CSS below this line: **********/
+
+
 #solar-area {
     display: flex;
     flex-direction: column;
@@ -90,6 +92,10 @@
     cursor: pointer;
 }
 
+#myhand_wrap {
+   height: 236px; 
+}
+
 .card:hover {
     transform: scale(1.35);   /* zoom in */
     z-index: 50;              /* bring card to front */
@@ -117,6 +123,18 @@
     z-index: 100;
 }
 
+#player-tables {
+
+}
+
+.playertablename {
+  font-weight: bold;
+}
+
+.playertable {
+    height: 236px;
+}
+
 /* ROW 0 — cards 1–10 */
 .card_1 { background-position: 0px 0px; }
 .card_2 { background-position: -150px 0px; }
@@ -130,16 +148,16 @@
 .card_10 { background-position: -1350px 0px; }
 
 /* ROW 1 — cards 11–20 */
-.card_11 { background-position: 0px -394px; }
-.card_12 { background-position: -250px -394px; }
-.card_13 { background-position: -500px -394px; }
-.card_14 { background-position: -750px -394px; }
-.card_15 { background-position: -1000px -394px; }
-.card_16 { background-position: -1250px -394px; }
-.card_17 { background-position: -1500px -394px; }
-.card_18 { background-position: -1750px -394px; }
-.card_19 { background-position: -2000px -394px; }
-.card_20 { background-position: -2250px -394px; }
+.card_11 { background-position: 0px -236px; }
+.card_12 { background-position: -150px -236px; }
+.card_13 { background-position: -300px -236px; }
+.card_14 { background-position: -450px -236px; }
+.card_15 { background-position: -600px -236px; }
+.card_16 { background-position: -750px -236px; }
+.card_17 { background-position: -000px -236px; }
+.card_18 { background-position: -1050px -236px; }
+.card_19 { background-position: -1200px -236px; }
+.card_20 { background-position: -1350px -236px; }
 
 /* ROW 2 — cards 21–30 */
 .card_21 { background-position: 0px -472px; }
@@ -166,16 +184,16 @@
 .card_40 { background-position: -1350px -709px; }
 
 /* ROW 4 — cards 41–50 */
-.card_41 { background-position: 0px -946px; }
-.card_42 { background-position: -150px -946px; }
-.card_43 { background-position: -300px -946px; }
-.card_44 { background-position: -450px -946px; }
-.card_45 { background-position: -600px -946px; }
-.card_46 { background-position: -750px -946px; }
-.card_47 { background-position: -900px -946px; }
-.card_48 { background-position: -1050px -946px; }
-.card_49 { background-position: -1200px -946px; }
-.card_50 { background-position: -1350px -946px; }
+.card_41 { background-position: 0px -945px; }
+.card_42 { background-position: -150px -945px; }
+.card_43 { background-position: -300px -945px; }
+.card_44 { background-position: -450px -945px; }
+.card_45 { background-position: -600px -945px; }
+.card_46 { background-position: -750px -945px; }
+.card_47 { background-position: -900px -945px; }
+.card_48 { background-position: -1050px -945px; }
+.card_49 { background-position: -1200px -945px; }
+.card_50 { background-position: -1350px -945px; }
 
 /* ROW 5 — cards 51–60 */
 .card_51 { background-position: 0px -1182px; }

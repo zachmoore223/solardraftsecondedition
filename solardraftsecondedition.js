@@ -49,8 +49,6 @@ function (dojo, declare, gamegui, counter) {
 
             var gameArea = document.getElementById('game_play_area');
 
-            gameArea.insertAdjacentHTML('beforeend', '<div id="player-tables"></div>');
-
             /*************************************************
             * DECK, DISCARD, AND SOLAR ROWS
             *************************************************/
@@ -94,7 +92,12 @@ function (dojo, declare, gamegui, counter) {
             * PLAYER'S HAND
             *************************************************/
             gameArea.insertAdjacentHTML('beforeend', `
-                <div id="player-hand" class="player-hand"></div>
+                <div id="myhand_wrap" class="whiteblock">
+                    <b id="myhand_label">${_('My hand')}</b>
+                    <div id="myhand">
+                    </div>
+                </div>
+
             `);
 
             if (gamedatas.hand) {
@@ -105,6 +108,24 @@ function (dojo, declare, gamegui, counter) {
 
             /*************************************************
             * PLAYER SOLAR SYSTEMS
+            *************************************************/
+           gameArea.insertAdjacentHTML('beforeend', '<div id="player-tables"></div>');
+
+            Object.values(gamedatas.players).forEach((player, index) => {
+                document.getElementById("player-tables").insertAdjacentHTML(
+                    "beforeend",
+                    `
+                    <div class="playertable whiteblock playertable_${index}">
+                        <div class="playertablename" style="color:#${player.color};">Solar System - ${player.name}</div>
+                        <div id="tableau_${player.id}"></div>
+                    </div>
+                    `
+                );
+            });
+
+
+            /*************************************************
+            * PLAYER DISPLAY PANELS
             *************************************************/
             // Player boards (keep it simple for now)
             for (var playerId in gamedatas.players) {
