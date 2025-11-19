@@ -52,7 +52,7 @@
 #solar-area {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-end;
     gap: 8px;
     margin-top: 10px;
 }
@@ -79,8 +79,13 @@
     gap: 8px;
 }
 
+#solar-row-1 {
+    margin-right: 25px; 
+}
+
+
 #solar-row-2 {
-    margin-left: 325px; /* aligns with start of solar row 1 */
+    margin-right: 25px; 
 }
 
 .card {
@@ -93,7 +98,15 @@
 }
 
 #myhand_wrap {
-   height: 236px; 
+    height: 210px; 
+    width: 650px;
+    align-items: flex-start;
+}
+
+#mysolarsystem_wrap {
+    height: 210px; 
+    width: 970px;
+    align-items: flex-start;
 }
 
 .card:hover {
