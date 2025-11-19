@@ -371,6 +371,14 @@ class Game extends \Bga\GameFramework\Table
 
         //put a card in the discard pile
         $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 1);
+        
+
+        //deal each player 1 card
+        foreach ($players as $player_id => $player) {
+            for ($i = 0; $i < 3; $i++) {
+                $this->cards->pickCardForLocation('deck', 'hand', $player_id);
+            }
+        }
 
         // Activate first player once everything has been initialized and ready.
         $this->activeNextPlayer();

@@ -47,8 +47,6 @@
 
 
 /********* You can start writing your CSS below this line: **********/
-
-
 #solar-area {
     display: flex;
     flex-direction: column;
@@ -97,10 +95,42 @@
     cursor: pointer;
 }
 
-#myhand_wrap {
+#player-hand_wrap {
     height: 210px; 
     width: 650px;
     align-items: flex-start;
+}
+
+#player-hand {
+    display: flex;
+    flex-direction: row;
+    gap: 0px;            /* spacing between cards */
+    align-items: center;
+    padding: 1px;
+    flex-wrap: nowrap;    /* prevent wrapping unless you want multiple rows */
+}
+
+#player-hand .card {
+    transform: scale(0.75);        /* shrink cards */
+    transform-origin: top left;    /* avoid "pop out" shifts */
+    transition: transform 0.15s ease;
+    margin-left: -35px;
+    cursor: pointer;
+}
+
+#player-hand .card-wrapper:first-child .card {
+    margin-left: 0;
+}
+
+#player-hand .card:hover {
+    transform: scale(1.00);        /* zoom on hover */
+    z-index: 200;
+}
+
+.card-wrapper {
+    margin: 0;
+    padding: 0;
+    display: inline-flex;
 }
 
 #mysolarsystem_wrap {
@@ -109,31 +139,9 @@
     align-items: flex-start;
 }
 
-.card:hover {
-    transform: scale(1.35);   /* zoom in */
-    z-index: 50;              /* bring card to front */
-}
-
-.player-hand {
-    display: flex;
-    flex-direction: row;
-    gap: 10px;
-    margin-top: 20px;
-
-    /* You can center it or left align it */
-    justify-content: center;
-}
-
-/* Scale cards in hand too */
-.player-hand .card {
-    transform: scale(0.6);
-    transform-origin: top left;
-    transition: transform 0.2s ease;
-}
-
-.player-hand .card:hover {
-    transform: scale(0.9);
-    z-index: 100;
+.solar-row-cards .card:hover,
+.pile .card:hover {
+    transform: scale(1.35);
 }
 
 #player-tables {

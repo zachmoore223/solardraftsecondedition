@@ -57,9 +57,9 @@ define([
         "beforeend",
         '<div id="solar-area">' +
           '<div id="solar-top-row" class="solar-row full-row">' +
-           '<div id="myhand_wrap" class="whiteblock">' +
+           '<div id="player-hand_wrap" class="whiteblock">' +
           '<b id="myhand_label">My Hand</b>' +
-          '<div id="myhand">' +
+          '<div id="player-hand">' +
           "</div>" +
           "</div>" +
           '<div id="discard-pile" class="pile discard-pile"></div>' +
@@ -69,8 +69,7 @@ define([
           '<div id="solar-bottom-row" class="solar-row full-row">' +
           '<div id="mysolarsystem_wrap" class="whiteblock">' +
           '<b id="mysolarsystem">my solar system</b>' +
-          '<div id="myhand">' +
-          "</div>" +
+
           "</div>" +
           '<div id="solar-row-2" class="solar-row-cards"></div>' +
           "</div>" +
@@ -336,7 +335,7 @@ define([
         "div",
         {
           id: "card_" + card.id,
-          class: "card card_" + card.type_arg00000000000000000000000,
+          class: "card card_" + card.type_arg,
         },
         wrapper
       );
