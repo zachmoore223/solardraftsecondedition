@@ -79,6 +79,12 @@ define([
         this.addCardBackToDeck(gamedatas.deckTop);
         }
 
+        dojo.connect(
+            document.getElementById("solar-deck"),
+            "onclick",
+            dojo.hitch(this, this.onDeckClick)
+        );
+
       // Display card in discard
       if (gamedatas.discardPile) {
         Object.values(gamedatas.discardPile).forEach((card) =>
@@ -351,31 +357,23 @@ define([
 
     ///////////////////////////////////////////////////
     //// Player's action
-
-    /*
-        
-            Here, you are defining methods to handle player's action (ex: results of mouse click on 
-            game objects).
-            
-            Most of the time, these methods:
-            _ check the action is possible at this game state.
-            _ make a call to the game server
-        
-        */
-
-    // Example:
-
-    onCardClick: function (card_id) {
-      console.log("onCardClick", card_id);
-
-      this.bgaPerformAction("actPlayCard", {
-        card_id,
-      }).then(() => {
-        // What to do after the server call if it succeeded
-        // (most of the time, nothing, as the game will react to notifs / change of state instead)
-      });
+    onDeckClick: function () {
+        this.bgaPerformAction("actDrawCard");
     },
 
+    // Example:
+    /*
+        onCardClick: function (card_id) {
+        console.log("onCardClick", card_id);
+
+        this.bgaPerformAction("actPlayCard", {
+            card_id,
+        }).then(() => {
+            // What to do after the server call if it succeeded
+            // (most of the time, nothing, as the game will react to notifs / change of state instead)
+        });
+        },
+    */
     ///////////////////////////////////////////////////
     //// Reaction to cometD notifications
 

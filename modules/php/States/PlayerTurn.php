@@ -37,14 +37,9 @@ class PlayerTurn extends GameState
         ];
     }    
 
-    /**
-     * PLAY A CARD (will need broken down by moon, planet, and comet)
-     *
-     * In this scenario, each time a player plays a card, this method will be called. This method is called directly
-     * by the action trigger on the front side with `bgaPerformAction`.
-     *
-     * @throws UserException
-     */
+    /*******************
+     *   PLAY A CARD   *           
+     *******************/
     #[PossibleAction]
     public function actPlayCard(int $card_id, int $activePlayerId, array $args)
     {
@@ -53,84 +48,82 @@ class PlayerTurn extends GameState
         if (!in_array($card_id, $playableCardsIds)) {
             throw new UserException('Invalid card choice');
         }
+        $card = $this->game->cards->getCard($card_id);
 
-        // Add your game logic to play a card here.
-        $card_name = Game::$cards[$card_id]['card_name'];
+        // Move to tableau
+        $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
 
-        // Notify all players about the card played.
-        $this->notify->all("cardPlayed", clienttranslate('${player_name} plays ${card_name}'), [
-            "player_id" => $activePlayerId,
-            "player_name" => $this->game->getPlayerNameById($activePlayerId), // remove this line if you uncomment notification decorator
-            "card_name" => $card_name, // remove this line if you uncomment notification decorator
-            "card_id" => $card_id,
-            "i18n" => ['card_name'], // remove this line if you uncomment notification decorator
+        $this->notify->all("playCard", clienttranslate('${player_name} plays a card'), [
+            'player_id'   => $activePlayerId,
+            'player_name' => $this->game->getPlayerNameById($activePlayerId),
+            'card'        => $this->game->enrichCard($card),
         ]);
 
-        // in this example, the player gains 1 points each time he plays a card
-        $this->playerScore->inc($activePlayerId, 1);
+        // TODO trigger scoring + adjacency updates later
 
-        // at the end of the action, move to the next state
-        return NextPlayer::class;
+        return PlayerTurn::class;
     }
 
-    /**
-     * DRAFT ACTION
-     *
-     * In this scenario, each time a player DRAFTS, this method will be called. This method is called directly
-     * by the action trigger on the front side with `bgaPerformAction`.
-     */
+    /*******************
+     *   DRAFT A CARD  *           
+     *******************/
     #[PossibleAction]
     public function actDraftCard(int $card_id, int $activePlayerId, array $args)
     {
-        // Add your game logic to draw a card here.
-        $card_name = Game::$cards[$card_id]['card_name'];
+        // Move card from row → hand
+        $card = $this->game->cards->getCard($card_id);
 
-        // Notify all players about the choice to draft - will need to add which card is drafted.
-        $this->notify->all("draft", clienttranslate('${player_name} drafts'), [
-            "player_id" => $activePlayerId,
-            "player_name" => $this->game->getPlayerNameById($activePlayerId), // remove this line if you uncomment notification decorator
+        $this->game->cards->moveCard($card_id, 'hand', $activePlayerId);
+
+        $this->notify->all("draft", clienttranslate('${player_name} drafts a card'), [
+            'player_id' => $activePlayerId,
+            'player_name' => $this->game->getPlayerNameById($activePlayerId),
+            'card' => $this->game->enrichCard($card),
         ]);
 
-        // at the end of the action, move to the next state
-        return NextPlayer::class;
+        // Advance state → Let player play or pass
+        return PlayerTurn::class;
     }
 
-    /**
-     * DRAW ACTION
-     *
-     * In this scenario, each time a player DRAFTS, this method will be called. This method is called directly
-     * by the action trigger on the front side with `bgaPerformAction`.
-     */
+
+    /*******************
+     *   DRAW A CARD   *           
+     *******************/
     #[PossibleAction]
-    public function actDrawCard(int $card_id, int $activePlayerId, array $args)
+    public function actDrawCard(int $activePlayerId)
     {
-        /* check input values
-        $playableCardsIds = $args['playableCardsIds'];
-        if (!in_array($card_id, $playableCardsIds)) {
-            throw new UserException('Invalid card choice');
-        } */
+        // Deck draw for the active player
+        $card = $this->game->cards->pickCardForLocation(
+        Game::LOCATION_DECK, // from
+        'hand',              // to location
+        $activePlayerId      // to location_arg (player id)
+        );
 
-        // Add your game logic to draw a card here.
-        $card_name = Game::$cards[$card_id]['card_name'];
+        if ($card === null) {
+            throw new UserException("The deck is empty.");
+        }
 
-        // Notify all players about the choice to draft - will need to add which card is drafted.
-        $this->notify->all("draw", clienttranslate('${player_name} draws'), [
-            "player_id" => $activePlayerId,
-            "player_name" => $this->game->getPlayerNameById($activePlayerId), // remove this line if you uncomment notification decorator
-        ]);
+        // Enrich card for client
+        $card = $this->game->enrichCard($card);
 
-        // at the end of the action, move to the next state
-        return NextPlayer::class;
+        // Notify players
+        $this->game->notify->all(
+            'deckDrawn',
+            '${player_name} draws a card.',
+            [
+                'player_id' => $activePlayerId,
+                'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                'card' => $card
+            ]
+        );
+
+        return PlayerTurn::class;
     }
 
 
-    /**
-     * END TURN (PASS)
-     *
-     * In this scenario, each time a player pass, this method will be called. This method is called directly
-     * by the action trigger on the front side with `bgaPerformAction`.
-     */
-
+    /*******************
+     *   PASS TURN     *           
+     *******************/
     #[PossibleAction]
     public function actPass(int $activePlayerId)
     {
@@ -139,9 +132,6 @@ class PlayerTurn extends GameState
             "player_id" => $activePlayerId,
             "player_name" => $this->game->getPlayerNameById($activePlayerId), // remove this line if you uncomment notification decorator
         ]);
-
-        // in this example, the player gains 1 energy each time he passes
-        $this->game->playerEnergy->inc($activePlayerId, 1);
 
         // at the end of the action, move to the next state
         return NextPlayer::class;
@@ -163,11 +153,6 @@ class PlayerTurn extends GameState
      * but use the $playerId passed in parameter and $this->game->getPlayerNameById($playerId) instead.
      */
     function zombie(int $playerId) {
-        // Example of zombie level 0: return NextPlayer::class; or $this->actDraft($playerId);
-
-        // Example of zombie level 1:
-        $args = $this->getArgs();
-        $zombieChoice = $this->getRandomZombieChoice($args['playableCardsIds']); // random choice over possible moves
-        return $this->actPlayCard($zombieChoice, $playerId, $args); // this function will return the transition to the next state
+        return $this->actPass($playerId);
     }
 }

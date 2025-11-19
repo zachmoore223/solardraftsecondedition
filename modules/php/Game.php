@@ -268,7 +268,7 @@ class Game extends \Bga\GameFramework\Table
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
         $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
-        
+
         //get top card of deck to display correct back
         $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
 
@@ -367,7 +367,6 @@ class Game extends \Bga\GameFramework\Table
         $this->cards->createCards($solarCards, 'deck');
         $this->cards->shuffle('deck');
 
-
         // ---------- SOLAR ROWS ----------
         for ($i = 0; $i < 3; $i++) {
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW1, $i);
@@ -429,6 +428,7 @@ class Game extends \Bga\GameFramework\Table
         $this->cards->moveCard($card['id'], 'hand', $playerId);
     }     
     */
+
 
     /*************************************************
      *               CARD INFO HELPERS                
