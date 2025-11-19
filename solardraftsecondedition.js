@@ -49,10 +49,9 @@ define([
       var gameArea = document.getElementById("game_play_area");
 
       /*************************************************
-       * DECK, DISCARD, AND SOLAR ROWS
+       * ACTIVE PLAYER HAND & SOLAR SYSTEM
+       * DRAW, DICARD, and SOLAR ROW DIVS
        *************************************************/
-
-      //solar deck
       gameArea.insertAdjacentHTML(
         "beforeend",
         '<div id="solar-area">' +
@@ -69,27 +68,26 @@ define([
           '<div id="solar-bottom-row" class="solar-row full-row">' +
           '<div id="mysolarsystem_wrap" class="whiteblock">' +
           '<b id="mysolarsystem">my solar system</b>' +
-
           "</div>" +
           '<div id="solar-row-2" class="solar-row-cards"></div>' +
           "</div>" +
           "</div>"
       );
 
-      // Display 1 card in discard
+      // Display card in discard
       if (gamedatas.discardPile) {
         Object.values(gamedatas.discardPile).forEach((card) =>
           this.addCardToDiscard(card)
         );
       }
-      // Display Solar Row 1
+      // Display cards in Solar Row 1
       if (gamedatas.solarRow1) {
         Object.values(gamedatas.solarRow1).forEach((card) =>
           this.addCardToRow(card, 1)
         );
       }
 
-      // Display Solar Row 2
+      // Display cards in  Solar Row 2
       if (gamedatas.solarRow2) {
         Object.values(gamedatas.solarRow2).forEach((card) =>
           this.addCardToRow(card, 2)
@@ -99,18 +97,6 @@ define([
       /*************************************************
        * PLAYER'S HAND
        *************************************************/
-      /*gameArea.insertAdjacentHTML(
-        "beforeend",
-        `
-                <div id="myhand_wrap" class="whiteblock">
-                    <b id="myhand_label">${_("My hand")}</b>
-                    <div id="myhand">
-                    </div>
-                </div>
-
-            `
-      );*/
-
       if (gamedatas.hand) {
         Object.values(gamedatas.hand).forEach((card) =>
           this.addCardToHand(card)
