@@ -156,6 +156,28 @@
     height: 236px;
 }
 
+.card-back-planet {
+    background-image: url('img/back_planet.png');
+}
+
+.card-back-comet {
+ 
+    background-image: url('img/back_comet.png');
+}
+
+.card-back-moon {
+    background-image: url('img/back_moon.png');
+}
+
+.card-back-planet,
+.card-back-comet,
+.card-back-moon {
+    width: 150px;
+    height: 236px;
+    background-size: cover; /* important */
+    background-repeat: no-repeat;
+}
+
 /* ROW 0 — cards 1–10 */
 .card_1 { background-position: 0px 0px; }
 .card_2 { background-position: -150px 0px; }

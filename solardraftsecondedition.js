@@ -74,6 +74,11 @@ define([
           "</div>"
       );
 
+      // Display top card of solar deck's back
+      if (gamedatas.deckTop) {
+        this.addCardBackToDeck(gamedatas.deckTop);
+        }
+
       // Display card in discard
       if (gamedatas.discardPile) {
         Object.values(gamedatas.discardPile).forEach((card) =>
@@ -333,6 +338,15 @@ define([
           this.onCardClick(card.id);
         })
       );
+    },
+
+    addCardBackToDeck(card) {
+    const deck = document.getElementById("solar-deck");
+    if (!deck) return;
+        const div = dojo.create("div", {
+            id: "deck_top_card",
+            class: `card card-back-${card.type}`
+        }, deck);
     },
 
     ///////////////////////////////////////////////////

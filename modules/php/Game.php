@@ -33,6 +33,9 @@ class Game extends \Bga\GameFramework\Table
     const LOCATION_DISCARD = 'discardPile';
     const LOCATION_SOLARROW1 = 'solar1';
     const LOCATION_SOLARROW2 = 'solar2';
+    const CARD_PLANET = 'planet';
+    const CARD_MOON   = 'moon';
+    const CARD_COMET  = 'comet';
 
     // ===== CARD INFO LOOKUP TABLE =====
     public static $CARD_INFO = [
@@ -157,10 +160,6 @@ class Game extends \Bga\GameFramework\Table
             ],
     ];
 
-    const CARD_PLANET = 'planet';
-    const CARD_MOON   = 'moon';
-    const CARD_COMET  = 'comet';
-
     /**
      * Your global variables labels:
      *
@@ -270,7 +269,11 @@ class Game extends \Bga\GameFramework\Table
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
         $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
         
+        //get top card of deck to display correct back
+        $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
 
+
+        $result['deckTop'] = $top ? $this->enrichCard($top) : null;
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['discardPile'] = $this->enrichCards($discardPile);
         $result['solarRow1'] = $this->enrichCards($solarRow1);
@@ -341,7 +344,7 @@ class Game extends \Bga\GameFramework\Table
             ];
         }
 
-        // ---------- COMET 61-85 ----------
+        // ---------- COMETS 61-85 ----------
         for ($i = 61; $i <= 85; $i++) {
             $solarCards[] = [
                 'type' => 'comet',
@@ -359,21 +362,27 @@ class Game extends \Bga\GameFramework\Table
             ];
         }
 
-
+        // ---------- SOLAR DECK ----------
+        // ****will need to adjust this to create deck according to # of players****
         $this->cards->createCards($solarCards, 'deck');
         $this->cards->shuffle('deck');
 
-        //put 3 cards in each solar row
+
+        // ---------- SOLAR ROWS ----------
         for ($i = 0; $i < 3; $i++) {
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW1, $i);
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW2, $i);
         }
 
-        //put a card in the discard pile
+        // ---------- DISCARD PILE ----------
+        // ****will need to chagnes this to be a stack of cards, starting with three cards and one of each type****
+        //***** will need to go before deck creation and shuffling once ready
         $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 1);
         
 
-        //deal each player 1 card
+        // ---------- PLAYER HANDS ----------
+        // ****will need to chagnes this to be three cards and one of each type for players****
+        //***** will need to go before deck creation and shuffling once ready
         foreach ($players as $player_id => $player) {
             for ($i = 0; $i < 3; $i++) {
                 $this->cards->pickCardForLocation('deck', 'hand', $player_id);
@@ -456,7 +465,10 @@ class Game extends \Bga\GameFramework\Table
         $card['name'] = $info['name'] ?? null;
         $card['points'] = $info['points'] ?? null;
         $card['ability'] = $info['ability'] ?? null;
-
+        $card['moonUnlock'] = $info['moonUnlock'] ?? null;
+        $card['moonUnlockReq'] = $info['moonUnlockReq'] ?? null;
+        $card['moonUnlockAbility'] = $info['moonUnlock'] ?? null;
+        $card['moonUnlockAbility'] = $info['moonUnlock'] ?? null;
         return $card;
     }
 
