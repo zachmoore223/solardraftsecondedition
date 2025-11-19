@@ -62,14 +62,23 @@
     gap: 8px;
 }
 
-.pile {
+#solar-deck, #discard-pile {
     width: 150px;
     height: 236px;
     border: 2px solid #444;
-    border-radius: 10px;
+    border-radius: 5px;
     background-color: rgba(255, 255, 255, 0.05);
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
+
+#discard-pile { border-color: #550000; }
+#discard-pile .card {
+    transform: scale(.85);        /* zoom on hover */
+}
+
 
 .solar-row-cards {
     display: flex;
@@ -86,6 +95,11 @@
     margin-right: 25px; 
 }
 
+
+#player-hand .card:hover {
+    transform: scale(1.5);        /* zoom on hover */
+}
+
 .card {
     width: 150px;          
     height: 236px;
@@ -96,35 +110,20 @@
 }
 
 #player-hand_wrap {
-    height: 210px; 
-    width: 650px;
-    align-items: flex-start;
+    width: 550px;
+    height: 210px;
+    overflow: visible;
 }
 
 #player-hand {
-    display: flex;
-    flex-direction: row;
-    gap: 0px;            /* spacing between cards */
-    align-items: center;
-    padding: 1px;
-    flex-wrap: nowrap;    /* prevent wrapping unless you want multiple rows */
+    position: relative;   /* required for HandStock */
+    width: 100%;
+    height: 100%;
 }
 
-#player-hand .card {
-    transform: scale(0.75);        /* shrink cards */
-    transform-origin: top left;    /* avoid "pop out" shifts */
-    transition: transform 0.15s ease;
-    margin-left: -35px;
-    cursor: pointer;
-}
-
-#player-hand .card-wrapper:first-child .card {
-    margin-left: 0;
-}
-
-#player-hand .card:hover {
-    transform: scale(1.00);        /* zoom on hover */
-    z-index: 200;
+#player-hand .bga-cards_stock_item > .card {
+    transform: scale(0.25);
+    transform-origin: top left;
 }
 
 .card-wrapper {
@@ -197,7 +196,7 @@
 .card_14 { background-position: -450px -236px; }
 .card_15 { background-position: -600px -236px; }
 .card_16 { background-position: -750px -236px; }
-.card_17 { background-position: -000px -236px; }
+.card_17 { background-position: -900px -236px; }
 .card_18 { background-position: -1050px -236px; }
 .card_19 { background-position: -1200px -236px; }
 .card_20 { background-position: -1350px -236px; }

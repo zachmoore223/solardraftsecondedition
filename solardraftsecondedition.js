@@ -20,7 +20,9 @@ define([
   "dojo/_base/declare",
   "ebg/core/gamegui",
   "ebg/counter",
-], function (dojo, declare, gamegui, counter) {
+  getLibUrl("bga-animations", "1.x"), // the lib uses bga-animations so this is required!
+  getLibUrl("bga-cards", "1.x"), // bga-cards itself
+], function (dojo, declare, gamegui, counter, BgaAnimations, BgaCards) {
   return declare("bgagame.solardraftsecondedition", ebg.core.gamegui, {
     constructor: function () {
       console.log("solardraftsecondedition constructor");
@@ -47,22 +49,44 @@ define([
       console.log("Starting game setup");
 
       var gameArea = document.getElementById("game_play_area");
+      const cardWidth = 150;
+      const cardHeight = 236;
 
-      /*************************************************
-       * ACTIVE PLAYER HAND & SOLAR SYSTEM
-       * DRAW, DICARD, and SOLAR ROW DIVS
-       *************************************************/
+      // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
+      this.animationManager = new BgaAnimations.Manager({
+        animationsActive: () => this.bgaAnimationsActive(),
+      });
+
+      // create the card manager
+      this.cardsManager = new BgaCards.Manager({
+        animationManager: this.animationManager,
+        type: "card", // the "type" of our cards in css
+        getId: (card) => card.id,
+        cardWidth: cardWidth,
+        cardHeight: cardHeight,
+        setupFrontDiv: (card, div) => {
+          div.dataset.type = card.type; 
+          div.dataset.typeArg = card.type_arg; 
+          div.style.backgroundPositionX = `calc(100% / 9 * (${card.type_arg} - 2))`; // number of columns in stock image minus 1
+          div.style.backgroundPositionY = `calc(100% / 10 * (${card.type} - 1))`; // number of rows in stock image minus 1
+          this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
+        },
+      });
+
+    /*******************************
+    *           GAME AREA          *
+    *******************************/
       gameArea.insertAdjacentHTML(
         "beforeend",
         '<div id="solar-area">' +
           '<div id="solar-top-row" class="solar-row full-row">' +
-           '<div id="player-hand_wrap" class="whiteblock">' +
+          '<div id="player-hand_wrap" class="whiteblock">' +
           '<b id="myhand_label">My Hand</b>' +
           '<div id="player-hand">' +
           "</div>" +
           "</div>" +
-          '<div id="discard-pile" class="pile discard-pile"></div>' +
-          '<div id="solar-deck" class="pile solar-deck"></div>' +
+          '<div id="discard-pile" class="discard-pile"></div>' +
+          '<div id="solar-deck" class="solar-deck"></div>' +
           '<div id="solar-row-1" class="solar-row-cards"></div>' +
           "</div>" +
           '<div id="solar-bottom-row" class="solar-row full-row">' +
@@ -74,49 +98,81 @@ define([
           "</div>"
       );
 
+    /*******************************
+    *          PLAYER HAND         *
+    *******************************/
+     //TO DO - clikcing on card in hand will prompt PLAY action
+      this.handStock = new BgaCards.HandStock(
+        this.cardsManager,
+        document.getElementById("player-hand"),
+         {
+        fanShaped: false,     // <-- turn off fanning
+        cardOverlap: 0,      // <-- keep cards flat
+        center: false,       // <-- optional: left-align
+        direction: 'row',    // <-- optional: horizontal
+        floatLeftMargin: 25,
+        }
+      );
+      
+      this.handStock.addCards(Array.from(Object.values(this.gamedatas.hand)));
+
+      /* PLAY ACTION EXAMPLE
+     this.handStock.onCardClick = (card) => {
+        this.tableauStocks[card.location_arg].addCards([card]);
+     };
+        */
+
+
+
+
+    /*******************************
+    *         SOLAR DECK           *
+    *******************************/
       // Display top card of solar deck's back
+      
       if (gamedatas.deckTop) {
         this.addCardBackToDeck(gamedatas.deckTop);
-        }
-
-        dojo.connect(
-            document.getElementById("solar-deck"),
-            "onclick",
-            dojo.hitch(this, this.onDeckClick)
-        );
-
-      // Display card in discard
-      if (gamedatas.discardPile) {
-        Object.values(gamedatas.discardPile).forEach((card) =>
-          this.addCardToDiscard(card)
-        );
       }
-      // Display cards in Solar Row 1
+
+      dojo.connect(
+        document.getElementById("solar-deck"),
+        "onclick",
+        dojo.hitch(this, this.onDeckClick)
+      );
+
+    /*******************************
+    *          DISCARD PILE        *
+    *******************************/
+     this.discardDeck = new BgaCards.DiscardDeck(
+        this.cardsManager,
+        document.getElementById("discard-pile"),
+        {
+        maxHorizontalShift: 2,
+        maxRotation: 2,
+        maxVerticalShift: 2
+        }
+     );
+      
+     this.discardDeck.addCards(Array.from(Object.values(this.gamedatas.discardPile)));
+
+    /*******************************
+    *          SOLAR ROWS          *
+    *******************************/
       if (gamedatas.solarRow1) {
         Object.values(gamedatas.solarRow1).forEach((card) =>
           this.addCardToRow(card, 1)
         );
       }
 
-      // Display cards in  Solar Row 2
       if (gamedatas.solarRow2) {
         Object.values(gamedatas.solarRow2).forEach((card) =>
           this.addCardToRow(card, 2)
         );
       }
 
-      /*************************************************
-       * PLAYER'S HAND
-       *************************************************/
-      if (gamedatas.hand) {
-        Object.values(gamedatas.hand).forEach((card) =>
-          this.addCardToHand(card)
-        );
-      }
-
-      /*************************************************
-       * PLAYER SOLAR SYSTEMS
-       *************************************************/
+    /*******************************
+    *   SOLAR SYSTEMS / TABLEAUS   *
+    *******************************/
       gameArea.insertAdjacentHTML(
         "beforeend",
         '<div id="player-tables"></div>'
@@ -134,9 +190,9 @@ define([
         );
       });
 
-      /*************************************************
-       * PLAYER DISPLAY PANELS
-       *************************************************/
+    /*******************************
+    *         PLAYER PANELS        *
+    *******************************/
       // Player boards (keep it simple for now)
       for (var playerId in gamedatas.players) {
         if (!gamedatas.players.hasOwnProperty(playerId)) continue;
@@ -347,18 +403,38 @@ define([
     },
 
     addCardBackToDeck(card) {
-    const deck = document.getElementById("solar-deck");
-    if (!deck) return;
-        const div = dojo.create("div", {
-            id: "deck_top_card",
-            class: `card card-back-${card.type}`
-        }, deck);
+      if (!card) {
+        return;
+      }
+
+      const deck = document.getElementById("solar-deck");
+      if (!deck) return;
+
+      dojo.create(
+        "div",
+        {
+          id: "deck_top_card",
+          class: `card card-back-${card.type}`,
+        },
+        deck
+      );
+    },
+
+    updateDeckTop(deckTop) {
+      const current = document.getElementById("deck_top_card");
+      if (current) {
+        current.remove();
+      }
+
+      if (deckTop) {
+        this.addCardBackToDeck(deckTop);
+      }
     },
 
     ///////////////////////////////////////////////////
     //// Player's action
     onDeckClick: function () {
-        this.bgaPerformAction("actDrawCard");
+      this.bgaPerformAction("actDrawCard");
     },
 
     // Example:

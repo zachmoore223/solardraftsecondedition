@@ -61,7 +61,7 @@ class PlayerTurn extends GameState
 
         // TODO trigger scoring + adjacency updates later
 
-        return PlayerTurn::class;
+        return NextPlayer::class;
     }
 
     /*******************
@@ -82,7 +82,7 @@ class PlayerTurn extends GameState
         ]);
 
         // Advance state → Let player play or pass
-        return PlayerTurn::class;
+        return NextPlayer::class;
     }
 
 
@@ -117,7 +117,7 @@ class PlayerTurn extends GameState
             ]
         );
 
-        return PlayerTurn::class;
+        return NextPlayer::class;
     }
 
 
@@ -132,6 +132,9 @@ class PlayerTurn extends GameState
             "player_id" => $activePlayerId,
             "player_name" => $this->game->getPlayerNameById($activePlayerId), // remove this line if you uncomment notification decorator
         ]);
+
+        // in this example, the player gains 1 energy each time he passes
+        $this->game->playerEnergy->inc($activePlayerId, 1);
 
         // at the end of the action, move to the next state
         return NextPlayer::class;

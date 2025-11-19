@@ -176,6 +176,7 @@ class Game extends \Bga\GameFramework\Table
         $this->initGameStateLabels([]); // mandatory, even if the array is empty
 
         $this->playerEnergy = $this->counterFactory->createPlayerCounter('energy');
+
         $this->cards = $this->deckFactory->createDeck('card');
         $this->cards->init('card');
 
@@ -272,8 +273,8 @@ class Game extends \Bga\GameFramework\Table
         //get top card of deck to display correct back
         $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
 
-
         $result['deckTop'] = $top ? $this->enrichCard($top) : null;
+
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['discardPile'] = $this->enrichCards($discardPile);
         $result['solarRow1'] = $this->enrichCards($solarRow1);
@@ -332,6 +333,11 @@ class Game extends \Bga\GameFramework\Table
 
         // TODO: Setup the initial game situation here.
 
+
+        /*******************************
+        *           SOLAR DECK         *
+        *******************************/
+        //TO DO - change deck steup according to player count
         //create inital solarDeck with 110 cards (60 planets, 25 comets, 25 moons)
         $solarCards = [];
 
@@ -362,24 +368,29 @@ class Game extends \Bga\GameFramework\Table
             ];
         }
 
-        // ---------- SOLAR DECK ----------
-        // ****will need to adjust this to create deck according to # of players****
         $this->cards->createCards($solarCards, 'deck');
         $this->cards->shuffle('deck');
 
-        // ---------- SOLAR ROWS ----------
+
+        /*******************************
+        *           SOLAR ROWS         *
+        *******************************/
         for ($i = 0; $i < 3; $i++) {
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW1, $i);
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW2, $i);
         }
 
-        // ---------- DISCARD PILE ----------
+        /*******************************
+        *          DISCARD PILE        *
+        *******************************/
         // ****will need to chagnes this to be a stack of cards, starting with three cards and one of each type****
         //***** will need to go before deck creation and shuffling once ready
         $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 1);
         
 
-        // ---------- PLAYER HANDS ----------
+        /*******************************
+        *          PLAYER HANDS        *
+        *******************************/
         // ****will need to chagnes this to be three cards and one of each type for players****
         //***** will need to go before deck creation and shuffling once ready
         foreach ($players as $player_id => $player) {
