@@ -51,69 +51,90 @@ define([
       var gameArea = document.getElementById("game_play_area");
       const cardWidth = 150;
       const cardHeight = 236;
-
       // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
       this.animationManager = new BgaAnimations.Manager({
         animationsActive: () => this.bgaAnimationsActive(),
       });
 
-      // create the card manager
       this.cardsManager = new BgaCards.Manager({
         animationManager: this.animationManager,
         type: "card", // the "type" of our cards in css
         getId: (card) => card.id,
+
+        // IMPORTANT: keep these, the manager relies on them
         cardWidth: cardWidth,
         cardHeight: cardHeight,
+
         setupFrontDiv: (card, div) => {
-          div.dataset.type = card.type; 
-          div.dataset.typeArg = card.type_arg; 
-          div.style.backgroundPositionX = `calc(100% / 9 * (${card.type_arg} - 2))`; // number of columns in stock image minus 1
-          div.style.backgroundPositionY = `calc(100% / 10 * (${card.type} - 1))`; // number of rows in stock image minus 1
-          this.addTooltipHtml(div.id, `tooltip of ${card.type}`);
+          const cardWidth = 150;
+          const cardHeight = 236;
+
+          const index = Number(card.type_arg) - 1;
+          const col = index % 10;
+          const row = Math.floor(index / 10);
+
+          // IMPORTANT: Correct BGA asset path
+          div.style.backgroundImage = `url('${g_gamethemeurl}img/cards.png')`;
+          div.style.backgroundSize = `${10 * cardWidth}px ${11 * cardHeight}px`;
+
+          div.style.backgroundPosition = `-${col * cardWidth}px -${
+            row * cardHeight
+          }px`;
+
+          div.style.width = cardWidth + "px";
+          div.style.height = cardHeight + "px";
         },
       });
 
-    /*******************************
-    *           GAME AREA          *
-    *******************************/
+      /*******************************
+       *           GAME AREA          *
+       *******************************/
       gameArea.insertAdjacentHTML(
         "beforeend",
-        '<div id="solar-area">' +
-          '<div id="solar-top-row" class="solar-row full-row">' +
-          '<div id="player-hand_wrap" class="whiteblock">' +
-          '<b id="myhand_label">My Hand</b>' +
-          '<div id="player-hand">' +
-          "</div>" +
-          "</div>" +
-          '<div id="discard-pile" class="discard-pile"></div>' +
-          '<div id="solar-deck" class="solar-deck"></div>' +
-          '<div id="solar-row-1" class="solar-row-cards"></div>' +
-          "</div>" +
-          '<div id="solar-bottom-row" class="solar-row full-row">' +
-          '<div id="mysolarsystem_wrap" class="whiteblock">' +
-          '<b id="mysolarsystem">my solar system</b>' +
-          "</div>" +
-          '<div id="solar-row-2" class="solar-row-cards"></div>' +
-          "</div>" +
-          "</div>"
-      );
+        `
+        <div id="solar-area">
 
-    /*******************************
-    *          PLAYER HAND         *
-    *******************************/
-     //TO DO - clikcing on card in hand will prompt PLAY action
+            <div id="solar-top-row" class="solar-row full-row">
+
+                <div id="player-hand_wrap" class="whiteblock">
+                    <b id="myhand_label">My Hand</b>
+                    <div id="player-hand"></div>
+                </div>
+
+                <div id="discard-pile" class="discard-pile"></div>
+                <div id="solar-deck" class="solar-deck"></div>
+                
+
+                <div id="solar-row-1" class="solar-row-cards"></div>
+            </div>
+
+            <div id="solar-bottom-row" class="solar-row full-row">
+                <div id="mysolarsystem_wrap" class="whiteblock">
+                    <b id="mysolarsystem">my solar system</b>
+                </div>
+                <div id="solar-row-2" class="solar-row-cards"></div>
+            </div>
+
+        </div>
+        `
+        );
+
+
+      /*******************************
+       *          PLAYER HAND         *
+       *******************************/
+      //TO DO - clikcing on card in hand will prompt PLAY action
       this.handStock = new BgaCards.HandStock(
         this.cardsManager,
         document.getElementById("player-hand"),
-         {
-        fanShaped: false,     // <-- turn off fanning
-        cardOverlap: 0,      // <-- keep cards flat
-        center: false,       // <-- optional: left-align
-        direction: 'row',    // <-- optional: horizontal
-        floatLeftMargin: 25,
+        {
+          fanShaped: false, // <-- turn off fanning
+          cardOverlap: 2, // <-- keep cards flat
+          center: false, // <-- optional: left-align
+          direction: "row", // <-- optional: horizontal
         }
       );
-      
+
       this.handStock.addCards(Array.from(Object.values(this.gamedatas.hand)));
 
       /* PLAY ACTION EXAMPLE
@@ -122,14 +143,9 @@ define([
      };
         */
 
-
-
-
-    /*******************************
-    *         SOLAR DECK           *
-    *******************************/
-      // Display top card of solar deck's back
-      
+      /*******************************
+       *         SOLAR DECK           *
+       *******************************/
       if (gamedatas.deckTop) {
         this.addCardBackToDeck(gamedatas.deckTop);
       }
@@ -140,39 +156,58 @@ define([
         dojo.hitch(this, this.onDeckClick)
       );
 
-    /*******************************
-    *          DISCARD PILE        *
-    *******************************/
-     this.discardDeck = new BgaCards.DiscardDeck(
+      /*******************************
+       *          DISCARD PILE        *
+       *******************************/
+      this.discardDeck = new BgaCards.DiscardDeck(
         this.cardsManager,
         document.getElementById("discard-pile"),
         {
-        maxHorizontalShift: 2,
-        maxRotation: 2,
-        maxVerticalShift: 2
+          maxHorizontalShift: 0,
+          maxRotation: 0,
+          maxVerticalShift: 0,
         }
-     );
-      
-     this.discardDeck.addCards(Array.from(Object.values(this.gamedatas.discardPile)));
+      );
 
-    /*******************************
-    *          SOLAR ROWS          *
-    *******************************/
-      if (gamedatas.solarRow1) {
-        Object.values(gamedatas.solarRow1).forEach((card) =>
-          this.addCardToRow(card, 1)
-        );
-      }
+      this.discardDeck.addCards(
+        Array.from(Object.values(this.gamedatas.discardPile))
+      );
 
-      if (gamedatas.solarRow2) {
-        Object.values(gamedatas.solarRow2).forEach((card) =>
-          this.addCardToRow(card, 2)
-        );
-      }
+      this.discardDeck = new BgaCards.DiscardDeck(
+        this.cardsManager,
+        document.getElementById("discard-pile")
+      );
 
-    /*******************************
-    *   SOLAR SYSTEMS / TABLEAUS   *
-    *******************************/
+      /*******************************
+       *          SOLAR ROWS          *
+       *******************************/
+
+      this.solarRow1 = new BgaCards.LineStock(
+        this.cardsManager,
+        document.getElementById("solar-row-1"),
+        {
+          center: false,
+          gap: '1px',
+          wrap: 'nowrap'
+        }
+      );
+
+      this.solarRow2 = new BgaCards.LineStock(
+        this.cardsManager,
+        document.getElementById("solar-row-2"),
+        {
+          center: false,
+          gap: '1px',
+          wrap: 'nowrap'
+        }
+      );
+
+      this.solarRow1.addCards(Array.from(Object.values(this.gamedatas.solarRow1)));
+      this.solarRow2.addCards(Array.from(Object.values(this.gamedatas.solarRow2)));
+
+      /*******************************
+       *   SOLAR SYSTEMS / TABLEAUS   *
+       *******************************/
       gameArea.insertAdjacentHTML(
         "beforeend",
         '<div id="player-tables"></div>'
@@ -190,9 +225,9 @@ define([
         );
       });
 
-    /*******************************
-    *         PLAYER PANELS        *
-    *******************************/
+      /*******************************
+       *         PLAYER PANELS        *
+       *******************************/
       // Player boards (keep it simple for now)
       for (var playerId in gamedatas.players) {
         if (!gamedatas.players.hasOwnProperty(playerId)) continue;

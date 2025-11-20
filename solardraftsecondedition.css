@@ -51,15 +51,15 @@
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 8px;
+    gap: 3px;
     margin-top: 10px;
 }
 
 .full-row {
     display: flex;
     flex-direction: row;
-    align-items: flex-start;
-    gap: 8px;
+    align-items: center;
+    gap: 3px;
 }
 
 #solar-deck, #discard-pile {
@@ -74,11 +74,17 @@
     justify-content: center;
 }
 
-#discard-pile { border-color: #550000; }
-#discard-pile .card {
-    transform: scale(.85);        /* zoom on hover */
+#solar-deck .card {
+    transform: scale(.85);
 }
 
+#discard-pile .card {
+    transform: scale(.85);    
+}
+
+#discard-pile .card:hover{
+    transform: scale(1.15);
+}
 
 .solar-row-cards {
     display: flex;
@@ -95,22 +101,8 @@
     margin-right: 25px; 
 }
 
-
-#player-hand .card:hover {
-    transform: scale(1.5);        /* zoom on hover */
-}
-
-.card {
-    width: 150px;          
-    height: 236px;
-    background-image: url('img/cards.png');
-    background-size: 1500px 2600px;
-    transition: transform 0.2s ease;
-    cursor: pointer;
-}
-
 #player-hand_wrap {
-    width: 550px;
+    width: 625px;
     height: 210px;
     overflow: visible;
 }
@@ -121,9 +113,13 @@
     height: 100%;
 }
 
-#player-hand .bga-cards_stock_item > .card {
-    transform: scale(0.25);
+#player-hand .card {
+    transform: scale(0.75);
     transform-origin: top left;
+}
+
+#player-hand .card:hover {
+    transform: scale(1.0);        /* zoom on hover */
 }
 
 .card-wrapper {
@@ -138,9 +134,21 @@
     align-items: flex-start;
 }
 
-.solar-row-cards .card:hover,
-.pile .card:hover {
-    transform: scale(1.35);
+#solar-row-1 .card {
+    transform: scale(0.85);
+
+}
+
+#solar-row-1 .card:hover{
+    transform: scale(1.15);
+}
+
+#solar-row-2 .card {
+    transform: scale(0.85);
+}
+
+#solar-row-2 .card:hover{
+    transform: scale(1.15);
 }
 
 #player-tables {
@@ -176,142 +184,3 @@
     background-size: cover; /* important */
     background-repeat: no-repeat;
 }
-
-/* ROW 0 — cards 1–10 */
-.card_1 { background-position: 0px 0px; }
-.card_2 { background-position: -150px 0px; }
-.card_3 { background-position: -300px 0px; }
-.card_4 { background-position: -450px 0px; }
-.card_5 { background-position: -600px 0px; }
-.card_6 { background-position: -750px 0px; }
-.card_7 { background-position: -900px 0px; }
-.card_8 { background-position: -1050px 0px; }
-.card_9 { background-position: -1200px 0px; }
-.card_10 { background-position: -1350px 0px; }
-
-/* ROW 1 — cards 11–20 */
-.card_11 { background-position: 0px -236px; }
-.card_12 { background-position: -150px -236px; }
-.card_13 { background-position: -300px -236px; }
-.card_14 { background-position: -450px -236px; }
-.card_15 { background-position: -600px -236px; }
-.card_16 { background-position: -750px -236px; }
-.card_17 { background-position: -900px -236px; }
-.card_18 { background-position: -1050px -236px; }
-.card_19 { background-position: -1200px -236px; }
-.card_20 { background-position: -1350px -236px; }
-
-/* ROW 2 — cards 21–30 */
-.card_21 { background-position: 0px -472px; }
-.card_22 { background-position: -150px -472px; }
-.card_23 { background-position: -300px -472px; }
-.card_24 { background-position: -450px -472px; }
-.card_25 { background-position: -600px -472px; }
-.card_26 { background-position: -750px -472px; }
-.card_27 { background-position: -900px -472px; }
-.card_28 { background-position: -1050px -472px; }
-.card_29 { background-position: -1200px -472px; }
-.card_30 { background-position: -1350px -472px; }
-
-/* ROW 3 — cards 31–40 */
-.card_31 { background-position: 0px -709px; }
-.card_32 { background-position: -150px -709px; }
-.card_33 { background-position: -300px -709px; }
-.card_34 { background-position: -450px -709px; }
-.card_35 { background-position: -600px -709px; }
-.card_36 { background-position: -750px -709px; }
-.card_37 { background-position: -900px -709px; }
-.card_38 { background-position: -1050px -709px; }
-.card_39 { background-position: -1200px -709px; }
-.card_40 { background-position: -1350px -709px; }
-
-/* ROW 4 — cards 41–50 */
-.card_41 { background-position: 0px -945px; }
-.card_42 { background-position: -150px -945px; }
-.card_43 { background-position: -300px -945px; }
-.card_44 { background-position: -450px -945px; }
-.card_45 { background-position: -600px -945px; }
-.card_46 { background-position: -750px -945px; }
-.card_47 { background-position: -900px -945px; }
-.card_48 { background-position: -1050px -945px; }
-.card_49 { background-position: -1200px -945px; }
-.card_50 { background-position: -1350px -945px; }
-
-/* ROW 5 — cards 51–60 */
-.card_51 { background-position: 0px -1182px; }
-.card_52 { background-position: -150px -1182px; }
-.card_53 { background-position: -300px -1182px; }
-.card_54 { background-position: -450px -1182px; }
-.card_55 { background-position: -600px -1182px; }
-.card_56 { background-position: -750px -1182px; }
-.card_57 { background-position: -900px -1182px; }
-.card_58 { background-position: -1050px -1182px; }
-.card_59 { background-position: -1200px -1182px; }
-.card_60 { background-position: -1350px -1182px; }
-
-/* ROW 6 — cards 61–70 (COMETS) */
-.card_61 { background-position: 0px -1418px; }
-.card_62 { background-position: -150px -1418px; }
-.card_63 { background-position: -300px -1418px; }
-.card_64 { background-position: -450px -1418px; }
-.card_65 { background-position: -600px -1418px; }
-.card_66 { background-position: -750px -1418px; }
-.card_67 { background-position: -900px -1418px; }
-.card_68 { background-position: -1050px -1418px; }
-.card_69 { background-position: -1200px -1418px; }
-.card_70 { background-position: -1350px -1418px; }
-
-/* ROW 7 — cards 71–80 */
-.card_71 { background-position: 0px -1655px; }
-.card_72 { background-position: -150px -1655px; }
-.card_73 { background-position: -300px -1655px; }
-.card_74 { background-position: -450px -1655px; }
-.card_75 { background-position: -600px -1655px; }
-.card_76 { background-position: -750px -1655px; }
-.card_77 { background-position: -900px -1655px; }
-.card_78 { background-position: -1050px -1655px; }
-.card_79 { background-position: -1200px -1655px; }
-.card_80 { background-position: -1350px -1655px; }
-
-/* ROW 8 — cards 81–90 (final comets + first moons) */
-.card_81 { background-position: 0px -1891px; }
-.card_82 { background-position: -150px -1891px; }
-.card_83 { background-position: -300px -1891px; }
-.card_84 { background-position: -450px -1891px; }
-.card_85 { background-position: -600px -1891px; }
-.card_86 { background-position: -750px -1891px; }
-.card_87 { background-position: -900px -1891px; }
-.card_88 { background-position: -1050px -1891px; }
-.card_89 { background-position: -1200px -1891px; }
-.card_90 { background-position: -1350px -1891px; }
-
-/* ROW 9 — cards 91–100 (Moons) */
-.card_91 { background-position: 0px -2127px; }
-.card_92 { background-position: -150px -2127px; }
-.card_93 { background-position: -300px -2127px; }
-.card_94 { background-position: -450px -2127px; }
-.card_95 { background-position: -600px -2127px; }
-.card_96 { background-position: -750px -2127px; }
-.card_97 { background-position: -900px -2127px; }
-.card_98 { background-position: -1050px -2127px; }
-.card_99 { background-position: -1200px -2127px; }
-.card_100 { background-position: -1350px -2127px; }
-
-/* ROW 10 — cards 101–110 (Moons) */
-.card_101 { background-position: 0px -2364px; }
-.card_102 { background-position: -150px -2364px; }
-.card_103 { background-position: -300px -2364px; }
-.card_104 { background-position: -450px -2364px; }
-.card_105 { background-position: -600px -2364px; }
-.card_106 { background-position: -750px -2364px; }
-.card_107 { background-position: -900px -2364px; }
-.card_108 { background-position: -1050px -2364px; }
-.card_109 { background-position: -1200px -2364px; }
-.card_110 { background-position: -1350px -2364px; }
-
-
-
-
-
-
-
