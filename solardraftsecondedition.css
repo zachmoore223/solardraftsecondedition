@@ -47,64 +47,38 @@
 
 
 /********* You can start writing your CSS below this line: **********/
-#solar-area {
+
+#solar-grid {
+    display: grid;
+    grid-template-columns: 56% 12% 32%; /* NOW PERCENTAGES */
+    grid-template-rows: 50% 50%;
+    gap: 5px;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+/* Column 3 spans both rows */
+#solar-rows_column {
+    grid-row: span 2;
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 3px;
-    margin-top: 10px;
+    gap: 10px;
+    width: auto;       
 }
 
-.full-row {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 3px;
+.solar-row-block {
+    width: auto;
+    align-items: center;  
 }
 
-#solar-deck, #discard-pile {
-    width: 150px;
-    height: 236px;
-    border: 2px solid #444;
-    border-radius: 5px;
-    background-color: rgba(255, 255, 255, 0.05);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.solar-row-block .solar-row-cards {
+    margin-top: 20px;
 }
 
-#solar-deck .card {
-    transform: scale(.85);
-}
-
-#discard-pile .card {
-    transform: scale(.85);    
-}
-
-#discard-pile .card:hover{
-    transform: scale(1.15);
-}
-
-.solar-row-cards {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-}
-
-#solar-row-1 {
-    margin-right: 25px; 
-}
-
-
-#solar-row-2 {
-    margin-right: 25px; 
-}
-
-#player-hand_wrap {
-    width: 625px;
-    height: 210px;
-    overflow: visible;
+#discard-pile {
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
 }
 
 #player-hand {
@@ -113,54 +87,31 @@
     height: 100%;
 }
 
-#player-hand .card {
-    transform: scale(0.75);
-    transform-origin: top left;
+#solar-deck{
+    margin-top: 20px;
 }
 
-#player-hand .card:hover {
-    transform: scale(1.0);        /* zoom on hover */
+.card {
+    transition: transform 0.25s ease-in-out;
 }
 
-.card-wrapper {
-    margin: 0;
-    padding: 0;
-    display: inline-flex;
+/* CARD SCALING */
+#solar-deck .card, #player-hand .card, 
+#solar-row-1 .card, #solar-row-2 .card {
+    transform: translate(0,0) scale(.95);
+    transition: transform 0.25s ease-in-out;
 }
 
-#mysolarsystem_wrap {
-    height: 210px; 
-    width: 970px;
-    align-items: flex-start;
+#discard-pile .card {
+    transform: scale(.85);    
 }
 
-#solar-row-1 .card {
-    transform: scale(0.85);
-
-}
-
-#solar-row-1 .card:hover{
-    transform: scale(1.15);
-}
-
-#solar-row-2 .card {
-    transform: scale(0.85);
-}
-
-#solar-row-2 .card:hover{
-    transform: scale(1.15);
-}
-
-#player-tables {
-
-}
-
-.playertablename {
-  font-weight: bold;
-}
-
-.playertable {
-    height: 236px;
+/* CARD HOVERS */
+#player-hand .card:hover,
+#solar-row-1 .card:hover,
+#solar-row-2 .card:hover {
+    transform: translate(0,0) scale(1.25);
+    z-index: 9999;       
 }
 
 .card-back-planet {
@@ -183,4 +134,10 @@
     height: 236px;
     background-size: cover; /* important */
     background-repeat: no-repeat;
+}
+
+.section-label {
+    align-self: flex-start;
+    margin-bottom: 2px;
+    font-weight: bold;
 }

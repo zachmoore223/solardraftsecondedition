@@ -269,12 +269,9 @@ class Game extends \Bga\GameFramework\Table
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
         $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
-
-        //get top card of deck to display correct back
         $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
 
         $result['deckTop'] = $top ? $this->enrichCard($top) : null;
-
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['discardPile'] = $this->enrichCards($discardPile);
         $result['solarRow1'] = $this->enrichCards($solarRow1);
@@ -385,7 +382,7 @@ class Game extends \Bga\GameFramework\Table
         *******************************/
         // ****will need to chagnes this to be a stack of cards, starting with three cards and one of each type****
         //***** will need to go before deck creation and shuffling once ready
-        $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 1);
+        $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 3);
         
 
         /*******************************

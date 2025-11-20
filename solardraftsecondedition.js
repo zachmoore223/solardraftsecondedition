@@ -94,28 +94,49 @@ define([
         `
         <div id="solar-area">
 
-            <div id="solar-top-row" class="solar-row full-row">
+            <div id="solar-grid">
 
+                <!-- Row 1, Col 1 -->
+                <div id="mysolarsystem_wrap" class="whiteblock">
+                    <b class="section-label">My Solar System</b>
+                    <div id="mysolarsystem"></div>
+                </div>
+
+                <!-- Row 1, Col 2 -->
+                <div id="solar-deck_wrap" class="whiteblock">
+                    <b class="section-label">Solar Deck</b>
+                    <div id="solar-deck"></div>
+                </div>
+
+                <!-- Col 3 (spans both rows!!) -->
+                <div id="solar-rows_column" class="whiteblock">
+                    <div class="solar-row-block">
+                        <b class="section-label">Solar Rows</b>
+                        <div id="solar-row-1" class="solar-row-cards"></div>
+                    </div>
+
+                    <div class="solar-row-block">
+                        <div id="solar-row-2" class="solar-row-cards"></div>
+                    </div>
+                </div>
+
+                <!-- Row 2, Col 1 -->
                 <div id="player-hand_wrap" class="whiteblock">
-                    <b id="myhand_label">My Hand</b>
+                    <b class="section-label">My Hand</b>
                     <div id="player-hand"></div>
                 </div>
 
-                <div id="discard-pile" class="discard-pile"></div>
-                <div id="solar-deck" class="solar-deck"></div>
-                
+                <!-- Row 2, Col 2 --> 
+                <div id="discard-pile_wrap" class="whiteblock">
+                    <b class="section-label-discard">Discard Pile</b>  
+                    <div id="discard-pile"></div>
+                <div>
 
-                <div id="solar-row-1" class="solar-row-cards"></div>
-            </div>
-
-            <div id="solar-bottom-row" class="solar-row full-row">
-                <div id="mysolarsystem_wrap" class="whiteblock">
-                    <b id="mysolarsystem">my solar system</b>
-                </div>
-                <div id="solar-row-2" class="solar-row-cards"></div>
             </div>
 
         </div>
+
+
         `
         );
 
@@ -163,9 +184,11 @@ define([
         this.cardsManager,
         document.getElementById("discard-pile"),
         {
-          maxHorizontalShift: 0,
-          maxRotation: 0,
-          maxVerticalShift: 0,
+          maxHorizontalShift: 2,
+          maxRotation: 2,
+          maxVerticalShift: 2,
+          selectableCardStyle: {class: 'CardStock', utlineColor: 'orange', outlineSize: 5},
+          selectedCardStyle: {class: 'CardStock', utlineColor: 'orange', outlineSize: 5}
         }
       );
 

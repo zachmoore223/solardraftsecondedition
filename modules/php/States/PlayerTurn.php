@@ -61,7 +61,7 @@ class PlayerTurn extends GameState
 
         // TODO trigger scoring + adjacency updates later
 
-        return NextPlayer::class;
+        return PlayerTurn::class;
     }
 
     /*******************
@@ -82,7 +82,7 @@ class PlayerTurn extends GameState
         ]);
 
         // Advance state → Let player play or pass
-        return NextPlayer::class;
+        return PlayerTurn::class;
     }
 
 
@@ -93,18 +93,14 @@ class PlayerTurn extends GameState
     public function actDrawCard(int $activePlayerId)
     {
         // Deck draw for the active player
-        $card = $this->game->cards->pickCardForLocation(
-        Game::LOCATION_DECK, // from
-        'hand',              // to location
-        $activePlayerId      // to location_arg (player id)
-        );
-
-        if ($card === null) {
-            throw new UserException("The deck is empty.");
-        }
+        $card = $this->game->cards->pickCard(Game::LOCATION_DECK, $activePlayerId);
 
         // Enrich card for client
         $card = $this->game->enrichCard($card);
+
+        $this->notify->player($activePlayerId, 'drawCard', '', array( 
+            'card' => $card
+         ) ); 
 
         // Notify players
         $this->game->notify->all(
@@ -112,12 +108,12 @@ class PlayerTurn extends GameState
             '${player_name} draws a card.',
             [
                 'player_id' => $activePlayerId,
-                'player_name' => $this->game->getPlayerNameById($activePlayerId),
-                'card' => $card
+                'player_name' => $this->game->getPlayerNameById($activePlayerId)
             ]
         );
 
-        return NextPlayer::class;
+
+        return PlayerTurn::class;
     }
 
 
@@ -132,10 +128,6 @@ class PlayerTurn extends GameState
             "player_id" => $activePlayerId,
             "player_name" => $this->game->getPlayerNameById($activePlayerId), // remove this line if you uncomment notification decorator
         ]);
-
-        // in this example, the player gains 1 energy each time he passes
-        $this->game->playerEnergy->inc($activePlayerId, 1);
-
         // at the end of the action, move to the next state
         return NextPlayer::class;
     }
