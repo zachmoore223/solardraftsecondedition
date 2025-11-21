@@ -40,29 +40,32 @@ class PlayerTurn extends GameState
     /*******************
      *   PLAY A CARD   *           
      *******************/
-    #[PossibleAction]
-    public function actPlayCard(int $card_id, int $activePlayerId, array $args)
-    {
-        // check input values
-        $playableCardsIds = $args['playableCardsIds'];
-        if (!in_array($card_id, $playableCardsIds)) {
-            throw new UserException('Invalid card choice');
+        #[PossibleAction]
+        public function actPlayCard(int $card_id)
+        {
+            $activePlayerId = (int) $this->game->getCurrentPlayerId();
+
+            // Take card from player's hand
+            $card = $this->game->cards->getCard($card_id);
+
+            // Move card to the player's tableau
+            $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
+
+            // Enrich before sending
+            $card = $this->game->enrichCard($card);
+
+            // Notify all players - IMPORTANT: include the card object!
+            $this->notify->all(
+                'cardPlayed',
+                '${player_name} plays ${cardName}.',
+                [
+                    'player_id' => $activePlayerId,
+                    'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                    'cardName' => $this->game->getCardName($card),
+                    'card' => $card  // ADD THIS LINE
+                ]
+            );
         }
-        $card = $this->game->cards->getCard($card_id);
-
-        // Move to tableau
-        $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
-
-        $this->notify->all("playCard", clienttranslate('${player_name} plays a card'), [
-            'player_id'   => $activePlayerId,
-            'player_name' => $this->game->getPlayerNameById($activePlayerId),
-            'card'        => $this->game->enrichCard($card),
-        ]);
-
-        // TODO trigger scoring + adjacency updates later
-
-        return PlayerTurn::class;
-    }
 
     /*******************
      *   DRAFT A CARD  *           
@@ -91,26 +94,26 @@ class PlayerTurn extends GameState
      *******************/
     #[PossibleAction]
     public function actDrawCard(int $activePlayerId)
-    {
-        // Deck draw for the active player
-        $card = $this->game->cards->pickCard(Game::LOCATION_DECK, $activePlayerId);
-
-        // Enrich card for client
-        $card = $this->game->enrichCard($card);
-
-        $this->notify->player($activePlayerId, 'drawCard', '', array( 
-            'card' => $card
-         ) ); 
-
-        // Notify players
-        $this->game->notify->all(
-            'deckDrawn',
-            '${player_name} draws a card.',
+    {   $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
+        $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
+        $newDeckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
+        // Notify each player that current player drew a card
+        $this->game->notify->all('deckDraw', clienttranslate('${player_name} drew a card'),
             [
                 'player_id' => $activePlayerId,
-                'player_name' => $this->game->getPlayerNameById($activePlayerId)
+                'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                'deckTop' => $deckTop,
+                "newDeckTop" => $newDeckTop
             ]
         );
+
+        // Notify current player only which card they drew 
+        $this->notify->player($activePlayerId, "dealCardPrivate", clienttranslate('You drew ${cardName}'), 
+        [
+            "card" => $deckTop,
+            "type" => $deckTop["type"],
+            "cardName" => $this->game->getCardName($deckTop)
+        ]);
 
 
         return PlayerTurn::class;

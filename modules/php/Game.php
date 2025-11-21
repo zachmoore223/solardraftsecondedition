@@ -266,10 +266,20 @@ class Game extends \Bga\GameFramework\Table
         $this->playerEnergy->fillResult($result);
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
+
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
         $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
         $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
+
+        $result['tableau'] = [];
+
+        foreach ($result['players'] as $p_id => $player) {
+                // Always return tableaus — even if empty
+                $cards = $this->cards->getCardsInLocation('tableau', $p_id);
+
+            $result['tableau'][$p_id] = $cards;
+        }
 
         $result['deckTop'] = $top ? $this->enrichCard($top) : null;
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
@@ -390,10 +400,8 @@ class Game extends \Bga\GameFramework\Table
         *******************************/
         // ****will need to chagnes this to be three cards and one of each type for players****
         //***** will need to go before deck creation and shuffling once ready
-        foreach ($players as $player_id => $player) {
-            for ($i = 0; $i < 3; $i++) {
-                $this->cards->pickCardForLocation('deck', 'hand', $player_id);
-            }
+        foreach ($players as $player_id => $player) {      
+                $this->cards->pickCards(3, 'deck', $player_id);
         }
 
         // Activate first player once everything has been initialized and ready.

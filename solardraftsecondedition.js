@@ -47,7 +47,7 @@ define([
 
     setup: function (gamedatas) {
       console.log("Starting game setup");
-
+      const activePlayerId = this.getActivePlayerId();
       var gameArea = document.getElementById("game_play_area");
       const cardWidth = 150;
       const cardHeight = 236;
@@ -97,8 +97,7 @@ define([
             <div id="solar-grid">
 
                 <!-- Row 1, Col 1 -->
-                <div id="mysolarsystem_wrap" class="whiteblock">
-                    <b class="section-label">My Solar System</b>
+                <div id="mysolarsystem_wrap">
                     <div id="mysolarsystem"></div>
                 </div>
 
@@ -138,8 +137,7 @@ define([
 
 
         `
-        );
-
+      );
 
       /*******************************
        *          PLAYER HAND         *
@@ -154,28 +152,31 @@ define([
           center: false, // <-- optional: left-align
           direction: "row", // <-- optional: horizontal
         }
+
+        
       );
+        //can only play one card from hand - might change this select to only matter for moons since that's the only time you have a choice where a card goes
+        this.handStock.setSelectionMode("single", {
+            unselectOnClick: true,
+            selectableCardClass: "card-selectable"
+        });
+
+        this.handStock.onCardClick = (card) => {
+            this.tableauStocks[card.location_arg].addCard([card]);
+            this.bgaPerformAction("actPlayCard", {card_id: card.id});
+     };
 
       this.handStock.addCards(Array.from(Object.values(this.gamedatas.hand)));
-
-      /* PLAY ACTION EXAMPLE
-     this.handStock.onCardClick = (card) => {
-        this.tableauStocks[card.location_arg].addCards([card]);
-     };
-        */
 
       /*******************************
        *         SOLAR DECK           *
        *******************************/
-      if (gamedatas.deckTop) {
+     if (gamedatas.deckTop) {
         this.addCardBackToDeck(gamedatas.deckTop);
       }
 
-      dojo.connect(
-        document.getElementById("solar-deck"),
-        "onclick",
-        dojo.hitch(this, this.onDeckClick)
-      );
+
+      document.getElementById("solar-deck").addEventListener("click", this.onDeckClick.bind(this));
 
       /*******************************
        *          DISCARD PILE        *
@@ -187,8 +188,16 @@ define([
           maxHorizontalShift: 2,
           maxRotation: 2,
           maxVerticalShift: 2,
-          selectableCardStyle: {class: 'CardStock', utlineColor: 'orange', outlineSize: 5},
-          selectedCardStyle: {class: 'CardStock', utlineColor: 'orange', outlineSize: 5}
+          selectableCardStyle: {
+            class: "CardStock",
+            utlineColor: "orange",
+            outlineSize: 5,
+          },
+          selectedCardStyle: {
+            class: "CardStock",
+            utlineColor: "orange",
+            outlineSize: 5,
+          },
         }
       );
 
@@ -210,8 +219,8 @@ define([
         document.getElementById("solar-row-1"),
         {
           center: false,
-          gap: '1px',
-          wrap: 'nowrap'
+          gap: "1px",
+          wrap: "nowrap",
         }
       );
 
@@ -220,13 +229,18 @@ define([
         document.getElementById("solar-row-2"),
         {
           center: false,
-          gap: '1px',
-          wrap: 'nowrap'
+          gap: "1px",
+          wrap: "nowrap",
         }
       );
 
-      this.solarRow1.addCards(Array.from(Object.values(this.gamedatas.solarRow1)));
-      this.solarRow2.addCards(Array.from(Object.values(this.gamedatas.solarRow2)));
+      this.solarRow1.addCards(
+        Array.from(Object.values(this.gamedatas.solarRow1))
+      );
+
+      this.solarRow2.addCards(
+        Array.from(Object.values(this.gamedatas.solarRow2))
+      );
 
       /*******************************
        *   SOLAR SYSTEMS / TABLEAUS   *
@@ -240,12 +254,33 @@ define([
         document.getElementById("player-tables").insertAdjacentHTML(
           "beforeend",
           `
-                    <div class="playertable whiteblock playertable_${index}">
-                        <div class="playertablename" style="color:#${player.color};">Solar System - ${player.name}</div>
+                    <div class="playertable whiteblock playertable_${player.id}">
+                        <div class="playertablename" style="color:#${player.color};">
+                            <b>Solar System - ${player.name}</b>
+                        </div>
                         <div id="tableau_${player.id}"></div>
                     </div>
                     `
         );
+      });
+
+      //move active player's tableau to MySolarSystem
+        const myWrapper = document.querySelector(`.playertable_${activePlayerId}`);
+        document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
+
+      //create LineStocks for each tableau
+      this.tableauStocks = {};
+
+      Object.values(gamedatas.players).forEach((player) => {
+        this.tableauStocks[player.id] = new BgaCards.LineStock(
+          this.cardsManager,
+          document.getElementById(`tableau_${player.id}`)
+        );
+
+        // Load tableau cards from server
+        if (gamedatas.tableau[player.id]) {
+          this.tableauStocks[player.id].addCards(gamedatas.tableau[player.id]);
+        }
       });
 
       /*******************************
@@ -478,22 +513,23 @@ define([
       );
     },
 
-    updateDeckTop(deckTop) {
-      const current = document.getElementById("deck_top_card");
-      if (current) {
-        current.remove();
-      }
-
-      if (deckTop) {
-        this.addCardBackToDeck(deckTop);
-      }
-    },
-
     ///////////////////////////////////////////////////
     //// Player's action
     onDeckClick: function () {
       this.bgaPerformAction("actDrawCard");
     },
+
+    
+    onHandCardClick(card) {
+            if (!this.isCurrentPlayerActive()) return;
+
+            console.log("Client: clicked card", card);
+
+            this.bgaPerformAction("actPlayCard", {
+                card_id: Number(card.id)
+        });
+     },
+
 
     // Example:
     /*
@@ -527,6 +563,73 @@ define([
       this.bgaSetupPromiseNotifications();
     },
 
+        /**
+         * Handle card played notification
+         */
+        notif_cardPlayed: async function(notif) {
+            console.log('notif_cardPlayed', notif);
+            
+            const card = notif.args.card || notif.args;
+            const playerId = notif.args.player_id;
+            
+            // Remove from hand if it's the current player's card
+            if (playerId == this.player_id) {
+                await this.handStock.removeCard(card);
+            }
+            
+            // Add to the player's tableau
+            if (this.tableauStocks[playerId]) {
+                await this.tableauStocks[playerId].addCard(card);
+            }
+        },
+
+        /**
+         * Handle deck draw notification (public - just shows someone drew)
+         */
+        notif_deckDraw: async function (notif) {
+            console.log('notif_deckDraw', notif);
+            // Remove old deck-top visual
+            const deckTopElem = document.getElementById("deck_top_card");
+            if (deckTopElem) {
+                deckTopElem.remove();
+            }
+
+            // Add drawn card to hand
+            await this.handStock.addCard(notif.deckTop);
+
+            // If deck still has cards, show new top card-back
+            if (notif.newDeckTop) {
+                this.addCardBackToDeck(notif.newDeckTop);
+            } //add else to show empty deck
+        },
+
+
+        /**
+         * Handle draft notification
+         */
+        notif_draft: async function(notif) {
+            console.log('notif_draft', notif);
+            
+            const card = notif.args.card;
+            const playerId = notif.args.player_id;
+            
+            // Remove from solar rows
+            await this.solarRow1.removeCard(card);
+            await this.solarRow2.removeCard(card);
+            
+            // If it's the current player, add to hand
+            if (playerId == this.player_id) {
+                await this.handStock.addCard(card);
+            }
+        },
+
+        /**
+         * Handle pass notification
+         */
+        notif_pass: function(notif) {
+            console.log('notif_pass', notif);
+            // Nothing to do visually for a pass
+        },
     // TODO: from this point and below, you can write your game notifications handling methods
 
     /*

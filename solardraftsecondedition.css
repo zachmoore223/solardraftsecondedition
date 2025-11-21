@@ -57,6 +57,11 @@
     margin-bottom: 20px;
 }
 
+.playertable {
+    flex: 1 1 auto;
+    height: 90%;
+}
+
 /* Column 3 spans both rows */
 #solar-rows_column {
     grid-row: span 2;
