@@ -51,6 +51,7 @@ define([
       var gameArea = document.getElementById("game_play_area");
       const cardWidth = 150;
       const cardHeight = 236;
+      var cardsRemaining = gamedatas.cardsRemaining
       // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
       this.animationManager = new BgaAnimations.Manager({
         animationsActive: () => this.bgaAnimationsActive(),
@@ -103,7 +104,7 @@ define([
 
                 <!-- Row 1, Col 2 -->
                 <div id="solar-deck_wrap" class="whiteblock">
-                    <b class="section-label">Solar Deck</b>
+                    <b class="section-label">Solar Deck (<span id="deck-count">${cardsRemaining}</span>)</b>
                     <div id="solar-deck"></div>
                 </div>
 
@@ -233,6 +234,12 @@ define([
           wrap: "nowrap",
         }
       );
+
+        document.getElementById("solar-row-1")
+        .addEventListener("click", this.onSolarRowClick.bind(this));
+
+    document.getElementById("solar-row-2")
+        .addEventListener("click", this.onSolarRowClick.bind(this));
 
       this.solarRow1.addCards(
         Array.from(Object.values(this.gamedatas.solarRow1))
@@ -508,6 +515,7 @@ define([
         {
           id: "deck_top_card",
           class: `card card-back-${card.type}`,
+          style: "z-index:0;"
         },
         deck
       );
@@ -517,6 +525,11 @@ define([
     //// Player's action
     onDeckClick: function () {
       this.bgaPerformAction("actDrawCard");
+    },
+
+    onSolarRowClick: function () {
+    
+      //this.bgaPerformAction("actDraftCard");
     },
 
     
@@ -588,6 +601,26 @@ define([
          */
         notif_deckDraw: async function (notif) {
             console.log('notif_deckDraw', notif);
+
+            
+            // --- UPDATE THE COUNT ---
+            if (notif.cardsRemaining !== undefined) {
+                document.getElementById("deck-count").innerText =
+                    notif.cardsRemaining;
+            }
+
+
+           /*  
+            * If deck still has cards, show new top card-back
+            * does this first to put card under current top card
+            * so current one when moved will reveal new top card 
+            */
+
+            if (notif.newDeckTop) {
+                this.addCardBackToDeck(notif.newDeckTop);
+            } //add else to show empty deck
+
+
             // Remove old deck-top visual
             const deckTopElem = document.getElementById("deck_top_card");
             if (deckTopElem) {
@@ -597,10 +630,7 @@ define([
             // Add drawn card to hand
             await this.handStock.addCard(notif.deckTop);
 
-            // If deck still has cards, show new top card-back
-            if (notif.newDeckTop) {
-                this.addCardBackToDeck(notif.newDeckTop);
-            } //add else to show empty deck
+
         },
 
 

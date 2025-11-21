@@ -71,7 +71,7 @@ class PlayerTurn extends GameState
      *   DRAFT A CARD  *           
      *******************/
     #[PossibleAction]
-    public function actDraftCard(int $card_id, int $activePlayerId, array $args)
+    public function actDraftCard(int $card_id, int $activePlayerId)
     {
         // Move card from row → hand
         $card = $this->game->cards->getCard($card_id);
@@ -96,14 +96,15 @@ class PlayerTurn extends GameState
     public function actDrawCard(int $activePlayerId)
     {   $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
         $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
-        $newDeckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
+
         // Notify each player that current player drew a card
         $this->game->notify->all('deckDraw', clienttranslate('${player_name} drew a card'),
             [
                 'player_id' => $activePlayerId,
                 'player_name' => $this->game->getPlayerNameById($activePlayerId),
                 'deckTop' => $deckTop,
-                "newDeckTop" => $newDeckTop
+                "newDeckTop" => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
+                'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK)
             ]
         );
 

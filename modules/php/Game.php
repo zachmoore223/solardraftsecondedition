@@ -266,7 +266,6 @@ class Game extends \Bga\GameFramework\Table
         $this->playerEnergy->fillResult($result);
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
-
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
         $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
@@ -280,7 +279,7 @@ class Game extends \Bga\GameFramework\Table
 
             $result['tableau'][$p_id] = $cards;
         }
-
+        $result['cardsRemaining'] = $this->cards->countCardsInLocation('deck');
         $result['deckTop'] = $top ? $this->enrichCard($top) : null;
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['discardPile'] = $this->enrichCards($discardPile);
