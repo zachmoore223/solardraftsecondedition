@@ -218,112 +218,99 @@ define([
         document.getElementById("discard-pile")
       );
 
-      /*******************************
-       *          SOLAR ROWS          *
-       *******************************/
-      this.solarRow1 = new BgaCards.LineStock(
-        this.cardsManager,
-        document.getElementById("solar-row-1"),
-        {
-          slots: [
-            document.getElementById("solar1_slot0"),
-            document.getElementById("solar1_slot1"),
-            document.getElementById("solar1_slot2"),
-          ],
-        }
-      );
+        /*******************************
+         *          SOLAR ROWS          *
+         *******************************/
+/*******************************
+ *          SOLAR ROWS          *
+ *******************************/
+this.solarRow1 = new BgaCards.LineStock(
+  this.cardsManager,
+  document.getElementById("solar-row-1"),
+  {
+    slots: [
+      document.getElementById("solar1_slot0"),
+      document.getElementById("solar1_slot1"),
+      document.getElementById("solar1_slot2"),
+    ],
+  }
+);
 
-      this.solarRow2 = new BgaCards.LineStock(
-        this.cardsManager,
-        document.getElementById("solar-row-2"),
-        {
-          slots: [
-            document.getElementById("solar2_slot0"),
-            document.getElementById("solar2_slot1"),
-            document.getElementById("solar2_slot2"),
-          ],
-        }
-      );
+// Enable selection mode
+this.solarRow1.setSelectionMode("single");
 
-      /*
-      this.solarRow1 = new BgaCards.LineStock(
-        this.cardsManager,
-        document.getElementById("solar-row-1"),
-        {
-          center: false,
-          gap: "1px",
-          wrap: "nowrap",
-        }
-      );
+this.solarRow2 = new BgaCards.LineStock(
+  this.cardsManager,
+  document.getElementById("solar-row-2"),
+  {
+    slots: [
+      document.getElementById("solar2_slot0"),
+      document.getElementById("solar2_slot1"),
+      document.getElementById("solar2_slot2"),
+    ],
+  }
+);
 
-      this.solarRow2 = new BgaCards.LineStock(
-        this.cardsManager,
-        document.getElementById("solar-row-2"),
-        {
-          center: false,
-          gap: "1px",
-          wrap: "nowrap",
-        }
-      );*/
+// Enable selection mode
+this.solarRow2.setSelectionMode("single");
 
-      document
-        .getElementById("solar1_slot0")
-        .addEventListener("click", (evt) => {
-          this.onSolarRowClick(evt, 1, 0); // pass row=1, slot=0
-        });
+// Fill Solar Row 1 - FIRST
+Object.values(this.gamedatas.solarRow1).forEach((card) => {
+  if (card) {
+    const slot = parseInt(card.location_arg);
+    this.solarRow1.addCard(card, { index: slot });
+  }
+});
 
-      document
-        .getElementById("solar1_slot1")
-        .addEventListener("click", (evt) => {
-          this.onSolarRowClick(evt, 1, 1); // pass row=1, slot=1
-        });
+// Fill Solar Row 2 - FIRST
+Object.values(this.gamedatas.solarRow2).forEach((card) => {
+  if (card) {
+    const slot = parseInt(card.location_arg);
+    this.solarRow2.addCard(card, { index: slot });
+  }
+});
 
-      document
-        .getElementById("solar1_slot2")
-        .addEventListener("click", (evt) => {
-          this.onSolarRowClick(evt, 1, 2); // pass row=1, slot=2
-        });
+// NOW set click handlers AFTER cards are added
+this.solarRow1.onCardClick = (card) => {
+  console.log("=== SOLAR ROW 1 CARD CLICKED ===");
+  console.log("Card:", card);
+  
+  if (!this.isCurrentPlayerActive()) {
+    console.log("Not your turn");
+    return;
+  }
+  
+  const slot = parseInt(card.location_arg);
+  console.log("Drafting from row 1, slot", slot);
+  
+  this.bgaPerformAction("actDraftCard", { 
+    card_id: parseInt(card.id), 
+    row: 1,
+    slot: slot
+  });
+};
 
-      document
-        .getElementById("solar2_slot0")
-        .addEventListener("click", (evt) => {
-          this.onSolarRowClick(evt, 2, 0); // pass row=2, slot=0
-        });
+this.solarRow2.onCardClick = (card) => {
+  console.log("=== SOLAR ROW 2 CARD CLICKED ===");
+  console.log("Card:", card);
+  
+  if (!this.isCurrentPlayerActive()) {
+    console.log("Not your turn");
+    return;
+  }
+  
+  const slot = parseInt(card.location_arg);
+  console.log("Drafting from row 2, slot", slot);
+  
+  this.bgaPerformAction("actDraftCard", { 
+    card_id: parseInt(card.id), 
+    row: 2,
+    slot: slot
+  });
+};
 
-      document
-        .getElementById("solar2_slot1")
-        .addEventListener("click", (evt) => {
-          this.onSolarRowClick(evt, 2, 1); // pass row=2, slot=1
-        });
-
-      document
-        .getElementById("solar2_slot2")
-        .addEventListener("click", (evt) => {
-          this.onSolarRowClick(evt, 2, 2); // pass row=2, slot=2
-        });
-
-      // Fill Solar Row 1
-      Object.values(this.gamedatas.solarRow1).forEach((card, slot) => {
-        if (card) {
-          this.solarRow1.addCard(card, { index: slot });
-        }
-      });
-
-      // Fill Solar Row 2
-      Object.values(this.gamedatas.solarRow2).forEach((card, slot) => {
-        if (card) {
-          this.solarRow1.addCard(card, { index: slot });
-        }
-      });
-      /*
-      this.solarRow1.addCards(
-        Array.from(Object.values(this.gamedatas.solarRow1))
-      );
-
-      this.solarRow2.addCards(
-        Array.from(Object.values(this.gamedatas.solarRow2))
-      ); */
-
+console.log("Setup complete - cards in row 1:", this.solarRow1.getCards().length);
+console.log("Setup complete - cards in row 2:", this.solarRow2.getCards().length);
       /*******************************
        *   SOLAR SYSTEMS / TABLEAUS   *
        *******************************/
