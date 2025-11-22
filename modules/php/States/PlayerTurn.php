@@ -71,17 +71,29 @@ class PlayerTurn extends GameState
      *   DRAFT A CARD  *           
      *******************/
     #[PossibleAction]
-    public function actDraftCard(int $card_id, int $activePlayerId)
-    {
-        // Move card from row → hand
+    public function actDraftCard(int $activePlayerId)
+    {   $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
+        $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
         $card = $this->game->cards->getCard($card_id);
+        // Remember where the card was (row & position)
+        $row = $card['location'];         // 'solar1' or 'solar2'
+        $slot = $card['location_arg'];    // 0,1,2
 
+        // Move card from row to hand
         $this->game->cards->moveCard($card_id, 'hand', $activePlayerId);
+        // Replace card from top of deck to the proper solar row & slot #
+         $this->game->cards->moveCard($deckTop['id'], $row, $slot);
 
-        $this->notify->all("draft", clienttranslate('${player_name} drafts a card'), [
+        $this->notify->all("draft", clienttranslate('${player_name} drafts ${cardName}'), [
             'player_id' => $activePlayerId,
             'player_name' => $this->game->getPlayerNameById($activePlayerId),
             'card' => $this->game->enrichCard($card),
+            "cardName" => $this->game->getCardName($card),
+            'deckTop' => $deckTop,
+            'newDeckTop' => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
+            'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK),
+            'row' => $row,
+            'slot' => $slot
         ]);
 
         // Advance state → Let player play or pass
@@ -103,7 +115,7 @@ class PlayerTurn extends GameState
                 'player_id' => $activePlayerId,
                 'player_name' => $this->game->getPlayerNameById($activePlayerId),
                 'deckTop' => $deckTop,
-                "newDeckTop" => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
+                'newDeckTop' => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
                 'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK)
             ]
         );

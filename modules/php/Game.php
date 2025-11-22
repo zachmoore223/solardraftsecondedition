@@ -267,8 +267,8 @@ class Game extends \Bga\GameFramework\Table
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
-        $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
-        $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
+        //$solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
+        //$solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
         $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
 
         $result['tableau'] = [];
@@ -283,8 +283,29 @@ class Game extends \Bga\GameFramework\Table
         $result['deckTop'] = $top ? $this->enrichCard($top) : null;
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['discardPile'] = $this->enrichCards($discardPile);
-        $result['solarRow1'] = $this->enrichCards($solarRow1);
-        $result['solarRow2'] = $this->enrichCards($solarRow2);
+        //$result['solarRow1'] = $this->enrichCards($solarRow1);
+        //$result['solarRow2'] = $this->enrichCards($solarRow2);
+
+        $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
+$solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
+
+// Convert to slot-indexed arrays
+$solarRow1Slots = [null, null, null];
+$solarRow2Slots = [null, null, null];
+
+foreach ($solarRow1 as $card) {
+    $slot = intval($card['location_arg']);
+    $solarRow1Slots[$slot] = $this->enrichCard($card);
+}
+
+foreach ($solarRow2 as $card) {
+    $slot = intval($card['location_arg']);
+    $solarRow2Slots[$slot] = $this->enrichCard($card);
+}
+
+$result['solarRow1'] = $solarRow1Slots;
+$result['solarRow2'] = $solarRow2Slots;
+
 
         return $result;
     }
@@ -381,9 +402,9 @@ class Game extends \Bga\GameFramework\Table
         /*******************************
         *           SOLAR ROWS         *
         *******************************/
-        for ($i = 0; $i < 3; $i++) {
-            $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW1, $i);
-            $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW2, $i);
+        for ($slot = 0; $slot < 3; $slot++) {
+            $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW1, $slot);
+            $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW2, $slot);
         }
 
         /*******************************
