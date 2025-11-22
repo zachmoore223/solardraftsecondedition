@@ -287,27 +287,27 @@ class Game extends \Bga\GameFramework\Table
         //$result['solarRow2'] = $this->enrichCards($solarRow2);
 
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
-$solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
+        $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
 
-// Convert to slot-indexed arrays
-$solarRow1Slots = [null, null, null];
-$solarRow2Slots = [null, null, null];
+        // Convert to slot-indexed arrays
+        $solarRow1Slots = [null, null, null];
+        $solarRow2Slots = [null, null, null];
 
-foreach ($solarRow1 as $card) {
-    $slot = intval($card['location_arg']);
-    $solarRow1Slots[$slot] = $this->enrichCard($card);
-}
+        foreach ($solarRow1 as $card) {
+            $slot = intval($card['location_arg']);
+            $solarRow1Slots[$slot] = $this->enrichCard($card);
+        }
 
-foreach ($solarRow2 as $card) {
-    $slot = intval($card['location_arg']);
-    $solarRow2Slots[$slot] = $this->enrichCard($card);
-}
+        foreach ($solarRow2 as $card) {
+            $slot = intval($card['location_arg']);
+            $solarRow2Slots[$slot] = $this->enrichCard($card);
+        }
 
-$result['solarRow1'] = $solarRow1Slots;
-$result['solarRow2'] = $solarRow2Slots;
+        $result['solarRow1'] = $solarRow1Slots;
+        $result['solarRow2'] = $solarRow2Slots;
 
 
-        return $result;
+                return $result;
     }
 
     /**

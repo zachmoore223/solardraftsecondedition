@@ -222,29 +222,30 @@ define([
        *          SOLAR ROWS          *
        *******************************/
       this.solarRow1 = new BgaCards.LineStock(
-    this.cardsManager,
-    document.getElementById("solar-row-1"),
-    {
-        slots: [
+        this.cardsManager,
+        document.getElementById("solar-row-1"),
+        {
+          slots: [
             document.getElementById("solar1_slot0"),
             document.getElementById("solar1_slot1"),
-            document.getElementById("solar1_slot2")
-        ]
-    }
-);
+            document.getElementById("solar1_slot2"),
+          ],
+        }
+      );
 
-      this.solarRow1 = new BgaCards.LineStock(
-    this.cardsManager,
-    document.getElementById("solar-row-2"),
-    {
-        slots: [
+      this.solarRow2 = new BgaCards.LineStock(
+        this.cardsManager,
+        document.getElementById("solar-row-2"),
+        {
+          slots: [
             document.getElementById("solar2_slot0"),
             document.getElementById("solar2_slot1"),
-            document.getElementById("solar2_slot2")
-        ]
-    }
-);
-/*
+            document.getElementById("solar2_slot2"),
+          ],
+        }
+      );
+
+      /*
       this.solarRow1 = new BgaCards.LineStock(
         this.cardsManager,
         document.getElementById("solar-row-1"),
@@ -265,60 +266,56 @@ define([
         }
       );*/
 
-        document
+      document
         .getElementById("solar1_slot0")
         .addEventListener("click", (evt) => {
-            this.onSolarRowClick(evt, 1, 0);   // pass row=1, slot=0
+          this.onSolarRowClick(evt, 1, 0); // pass row=1, slot=0
         });
 
-                document
+      document
         .getElementById("solar1_slot1")
         .addEventListener("click", (evt) => {
-            this.onSolarRowClick(evt, 1, 1);   // pass row=1, slot=1
+          this.onSolarRowClick(evt, 1, 1); // pass row=1, slot=1
         });
 
-
-                document
+      document
         .getElementById("solar1_slot2")
         .addEventListener("click", (evt) => {
-            this.onSolarRowClick(evt, 1, 2);   // pass row=1, slot=2
+          this.onSolarRowClick(evt, 1, 2); // pass row=1, slot=2
         });
 
-
-                document
+      document
         .getElementById("solar2_slot0")
         .addEventListener("click", (evt) => {
-            this.onSolarRowClick(evt, 2, 0);   // pass row=2, slot=0
+          this.onSolarRowClick(evt, 2, 0); // pass row=2, slot=0
         });
 
-
-                document
+      document
         .getElementById("solar2_slot1")
         .addEventListener("click", (evt) => {
-            this.onSolarRowClick(evt, 2, 1);   // pass row=2, slot=1
+          this.onSolarRowClick(evt, 2, 1); // pass row=2, slot=1
         });
 
-
-                document
+      document
         .getElementById("solar2_slot2")
         .addEventListener("click", (evt) => {
-            this.onSolarRowClick(evt, 1, 0);   // pass row=2, slot=2
+          this.onSolarRowClick(evt, 2, 2); // pass row=2, slot=2
         });
 
-        // Fill Solar Row 1
-        Object.values(this.gamedatas.solarRow1).forEach((card, slot) => {
-    if (card) {
-        this.solarRow1.addCard(card, { index: slot });
-    }
-});
+      // Fill Solar Row 1
+      Object.values(this.gamedatas.solarRow1).forEach((card, slot) => {
+        if (card) {
+          this.solarRow1.addCard(card, { index: slot });
+        }
+      });
 
-        // Fill Solar Row 2
-        Object.values(this.gamedatas.solarRow2).forEach((card, slot) => {
-    if (card) {
-        this.solarRow1.addCard(card, { index: slot });
-    }
-});
-        /*
+      // Fill Solar Row 2
+      Object.values(this.gamedatas.solarRow2).forEach((card, slot) => {
+        if (card) {
+          this.solarRow1.addCard(card, { index: slot });
+        }
+      });
+      /*
       this.solarRow1.addCards(
         Array.from(Object.values(this.gamedatas.solarRow1))
       );
@@ -547,7 +544,7 @@ define([
     },
 
     onSolarRowClick: function (evt, row, slow) {
-        console.log("draft action clicked");
+      console.log("draft action clicked");
       /*if (!this.isCurrentPlayerActive()) return;
       const cardSpot = `solar${row}_slot${slot}`;
      
@@ -565,7 +562,7 @@ define([
     onHandCardClick(card) {
       if (!this.isCurrentPlayerActive()) return;
       console.log("Client: clicked card", card);
-      this.bgaPerformAction("actPlayCard", {card_id: Number(card.id),});
+      this.bgaPerformAction("actPlayCard", { card_id: Number(card.id) });
     },
 
     // Example:
@@ -656,8 +653,8 @@ define([
      */
     notif_draft: async function (notif) {
       console.log("notif_draft", notif);
-      const row = notif.row;        // 'solar1' or 'solar2'
-      const slot = notif.slot;      // 0,1,2
+      const row = notif.row; // 'solar1' or 'solar2'
+      const slot = notif.slot; // 0,1,2
       const card = notif.args.card;
       const playerId = notif.player_id;
 
@@ -671,22 +668,21 @@ define([
         this.addCardBackToDeck(notif.newDeckTop);
       } //add else to show empty deck
 
-
-    // Remove ONLY from the row the card came from
-    if (row === 'solar1') {
+      // Remove ONLY from the row the card came from
+      if (row === "solar1") {
         await this.solarRow1.removeCard(card);
-    } else {
+      } else {
         await this.solarRow2.removeCard(card);
-    }
+      }
 
-    // Add new card from deck to solar row (if any)
-    if (notif.args.deckTop) {
-        if (row === 'solar1') {
-            await this.solarRow1.addCard(notif.deckTop, { index: slot });
+      // Add new card from deck to solar row (if any)
+      if (notif.args.deckTop) {
+        if (row === "solar1") {
+          await this.solarRow1.addCard(notif.deckTop, { index: slot });
         } else {
-            await this.solarRow2.addCard(notif.adeckTop, { index: slot });
+          await this.solarRow2.addCard(notif.adeckTop, { index: slot });
         }
-    }
+      }
 
       // If it's the current player, add to hand
       if (playerId == this.player_id) {
