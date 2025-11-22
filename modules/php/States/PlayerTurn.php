@@ -71,7 +71,7 @@ class PlayerTurn extends GameState
      *   DRAFT A CARD  *           
      *******************/
     #[PossibleAction]
-    public function actDraftCard(int $activePlayerId)
+    public function actDraftCard(int $card_id, int $row, int $slot, int $activePlayerId)
     {   $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
         $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
         $card = $this->game->cards->getCard($card_id);
@@ -84,7 +84,7 @@ class PlayerTurn extends GameState
         // Replace card from top of deck to the proper solar row & slot #
          $this->game->cards->moveCard($deckTop['id'], $row, $slot);
 
-        $this->notify->all("draft", clienttranslate('${player_name} drafts ${cardName}'), [
+        $this->notify->all("draft", clienttranslate('${player_name} DRAFTS ${cardName}'), [
             'player_id' => $activePlayerId,
             'player_name' => $this->game->getPlayerNameById($activePlayerId),
             'card' => $this->game->enrichCard($card),

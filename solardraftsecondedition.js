@@ -218,99 +218,94 @@ define([
         document.getElementById("discard-pile")
       );
 
-        /*******************************
-         *          SOLAR ROWS          *
-         *******************************/
-/*******************************
- *          SOLAR ROWS          *
- *******************************/
-this.solarRow1 = new BgaCards.LineStock(
-  this.cardsManager,
-  document.getElementById("solar-row-1"),
-  {
-    slots: [
-      document.getElementById("solar1_slot0"),
-      document.getElementById("solar1_slot1"),
-      document.getElementById("solar1_slot2"),
-    ],
-  }
-);
+      /*******************************
+       *          SOLAR ROWS          *
+       *******************************/
+      this.solarRow1 = new BgaCards.LineStock(
+        this.cardsManager,
+        document.getElementById("solar-row-1"),
+        {
+          slots: [
+            document.getElementById("solar1_slot0"),
+            document.getElementById("solar1_slot1"),
+            document.getElementById("solar1_slot2"),
+          ],
+        }
+      );
 
-// Enable selection mode
-this.solarRow1.setSelectionMode("single");
+      // Enable selection mode
+      this.solarRow1.setSelectionMode("single");
 
-this.solarRow2 = new BgaCards.LineStock(
-  this.cardsManager,
-  document.getElementById("solar-row-2"),
-  {
-    slots: [
-      document.getElementById("solar2_slot0"),
-      document.getElementById("solar2_slot1"),
-      document.getElementById("solar2_slot2"),
-    ],
-  }
-);
+      this.solarRow2 = new BgaCards.LineStock(
+        this.cardsManager,
+        document.getElementById("solar-row-2"),
+        {
+          slots: [
+            document.getElementById("solar2_slot0"),
+            document.getElementById("solar2_slot1"),
+            document.getElementById("solar2_slot2"),
+          ],
+        }
+      );
 
-// Enable selection mode
-this.solarRow2.setSelectionMode("single");
+      // Enable selection mode
+      this.solarRow2.setSelectionMode("single");
 
-// Fill Solar Row 1 - FIRST
-Object.values(this.gamedatas.solarRow1).forEach((card) => {
-  if (card) {
-    const slot = parseInt(card.location_arg);
-    this.solarRow1.addCard(card, { index: slot });
-  }
-});
+      // Fill Solar Row 1 - FIRST
+      Object.values(this.gamedatas.solarRow1).forEach((card) => {
+        if (card) {
+          const slot = parseInt(card.location_arg);
+          this.solarRow1.addCard(card, { index: slot });
+        }
+      });
 
-// Fill Solar Row 2 - FIRST
-Object.values(this.gamedatas.solarRow2).forEach((card) => {
-  if (card) {
-    const slot = parseInt(card.location_arg);
-    this.solarRow2.addCard(card, { index: slot });
-  }
-});
+      // Fill Solar Row 2 - FIRST
+      Object.values(this.gamedatas.solarRow2).forEach((card) => {
+        if (card) {
+          const slot = parseInt(card.location_arg);
+          this.solarRow2.addCard(card, { index: slot });
+        }
+      });
 
-// NOW set click handlers AFTER cards are added
-this.solarRow1.onCardClick = (card) => {
-  console.log("=== SOLAR ROW 1 CARD CLICKED ===");
-  console.log("Card:", card);
-  
-  if (!this.isCurrentPlayerActive()) {
-    console.log("Not your turn");
-    return;
-  }
-  
-  const slot = parseInt(card.location_arg);
-  console.log("Drafting from row 1, slot", slot);
-  
-  this.bgaPerformAction("actDraftCard", { 
-    card_id: parseInt(card.id), 
-    row: 1,
-    slot: slot
-  });
-};
+      // NOW set click handlers AFTER cards are added
+      this.solarRow1.onCardClick = (card) => {
+        console.log("=== SOLAR ROW 1 CARD CLICKED ===");
+        console.log("Card:", card);
 
-this.solarRow2.onCardClick = (card) => {
-  console.log("=== SOLAR ROW 2 CARD CLICKED ===");
-  console.log("Card:", card);
-  
-  if (!this.isCurrentPlayerActive()) {
-    console.log("Not your turn");
-    return;
-  }
-  
-  const slot = parseInt(card.location_arg);
-  console.log("Drafting from row 2, slot", slot);
-  
-  this.bgaPerformAction("actDraftCard", { 
-    card_id: parseInt(card.id), 
-    row: 2,
-    slot: slot
-  });
-};
+        if (!this.isCurrentPlayerActive()) {
+          console.log("Not your turn");
+          return;
+        }
 
-console.log("Setup complete - cards in row 1:", this.solarRow1.getCards().length);
-console.log("Setup complete - cards in row 2:", this.solarRow2.getCards().length);
+        const slot = parseInt(card.location_arg);
+        console.log("Drafting from row 1, slot", slot);
+
+        this.bgaPerformAction("actDraftCard", {
+          card_id: parseInt(card.id),
+          row: 1,
+          slot: slot,
+        });
+      };
+
+      this.solarRow2.onCardClick = (card) => {
+        console.log("=== SOLAR ROW 2 CARD CLICKED ===");
+        console.log("Card:", card);
+
+        if (!this.isCurrentPlayerActive()) {
+          console.log("Not your turn");
+          return;
+        }
+
+        const slot = parseInt(card.location_arg);
+        console.log("Drafting from row 2, slot", slot);
+
+        this.bgaPerformAction("actDraftCard", {
+          card_id: parseInt(card.id),
+          row: 2,
+          slot: slot,
+        });
+      };
+
       /*******************************
        *   SOLAR SYSTEMS / TABLEAUS   *
        *******************************/
@@ -492,19 +487,6 @@ console.log("Setup complete - cards in row 2:", this.solarRow2.getCards().length
       );
     },
 
-    setCardImage: function (div, card) {
-      div.style.backgroundImage = "url('img/cards.png')";
-
-      var cardWidth = 250;
-      // type_arg is 1-based in your PHP, so subtract 1 for 0-based index:
-      var index = (card.type_arg || 1) - 1;
-      var x = -(index * cardWidth);
-
-      div.style.backgroundPosition = x + "px 0px";
-      div.style.width = cardWidth + "px";
-      div.style.height = "350px"; // adjust to your sprite height
-    },
-
     addCardBackToDeck(card) {
       if (!card) {
         return;
@@ -526,25 +508,11 @@ console.log("Setup complete - cards in row 2:", this.solarRow2.getCards().length
 
     ///////////////////////////////////////////////////
     //// Player's action
+    //change this to directly occur from the onClick
     onDeckClick: function () {
       this.bgaPerformAction("actDrawCard");
     },
 
-    onSolarRowClick: function (evt, row, slow) {
-      console.log("draft action clicked");
-      /*if (!this.isCurrentPlayerActive()) return;
-      const cardSpot = `solar${row}_slot${slot}`;
-     
-            if (!cardSpot) {
-        console.error("Slot not found:", slotId);
-        return;
-    }
-
-    const card = document.getElementById(cardSpot);
-
-      console.log("Client: clicked card", card);
-      //this.bgaPerformAction("actDraftCard", card_id,); */
-    },
 
     onHandCardClick(card) {
       if (!this.isCurrentPlayerActive()) return;
@@ -552,19 +520,6 @@ console.log("Setup complete - cards in row 2:", this.solarRow2.getCards().length
       this.bgaPerformAction("actPlayCard", { card_id: Number(card.id) });
     },
 
-    // Example:
-    /*
-        onCardClick: function (card_id) {
-        console.log("onCardClick", card_id);
-
-        this.bgaPerformAction("actPlayCard", {
-            card_id,
-        }).then(() => {
-            // What to do after the server call if it succeeded
-            // (most of the time, nothing, as the game will react to notifs / change of state instead)
-        });
-        },
-    */
     ///////////////////////////////////////////////////
     //// Reaction to cometD notifications
 
@@ -642,7 +597,7 @@ console.log("Setup complete - cards in row 2:", this.solarRow2.getCards().length
       console.log("notif_draft", notif);
       const row = notif.row; // 'solar1' or 'solar2'
       const slot = notif.slot; // 0,1,2
-      const card = notif.args.card;
+      const card = notif.card;
       const playerId = notif.player_id;
 
       // --- UPDATE THE COUNT ---
@@ -655,6 +610,12 @@ console.log("Setup complete - cards in row 2:", this.solarRow2.getCards().length
         this.addCardBackToDeck(notif.newDeckTop);
       } //add else to show empty deck
 
+      // Remove old deck-top visual
+      const deckTopElem = document.getElementById("deck_top_card");
+      if (deckTopElem) {
+        await deckTopElem.remove();
+      }
+
       // Remove ONLY from the row the card came from
       if (row === "solar1") {
         await this.solarRow1.removeCard(card);
@@ -663,11 +624,11 @@ console.log("Setup complete - cards in row 2:", this.solarRow2.getCards().length
       }
 
       // Add new card from deck to solar row (if any)
-      if (notif.args.deckTop) {
+      if (notif.deckTop) {
         if (row === "solar1") {
           await this.solarRow1.addCard(notif.deckTop, { index: slot });
         } else {
-          await this.solarRow2.addCard(notif.adeckTop, { index: slot });
+          await this.solarRow2.addCard(notif.deckTop, { index: slot });
         }
       }
 
