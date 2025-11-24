@@ -156,6 +156,9 @@ define([
         this.cardsManager,
         document.getElementById("player-hand"),
         {
+                              selectedCardStyle: {
+            outlineColor: "rgba(255, 0, 221, 1)",
+        },
           fanShaped: false, // <-- turn off fanning
           cardOverlap: 2, // <-- keep cards flat
           center: false, // <-- optional: left-align
@@ -196,18 +199,17 @@ define([
           maxHorizontalShift: 2,
           maxRotation: 2,
           maxVerticalShift: 2,
-          selectableCardStyle: {
-            class: "CardStock",
-            utlineColor: "orange",
-            outlineSize: 5,
-          },
-          selectedCardStyle: {
+                              selectedCardStyle: {
+            outlineColor: "rgba(255, 0, 221, 1)",
+        },
+          lastCardPlayedStyle: {
             class: "CardStock",
             utlineColor: "orange",
             outlineSize: 5,
           },
         }
       );
+
 
       this.discardDeck.addCards(
         Array.from(Object.values(this.gamedatas.discardPile))
@@ -225,6 +227,13 @@ define([
         this.cardsManager,
         document.getElementById("solar-row-1"),
         {
+          gap: "3px",
+          selectableCardStyle: {
+            outlineSize: 0,
+          },
+                  selectedCardStyle: {
+            outlineColor: "rgba(255, 0, 221, 0.6)",
+        },
           slots: [
             document.getElementById("solar1_slot0"),
             document.getElementById("solar1_slot1"),
@@ -240,6 +249,13 @@ define([
         this.cardsManager,
         document.getElementById("solar-row-2"),
         {
+          gap: "3px",
+          selectableCardStyle: {
+            outlineSize: 0,
+          },
+                            selectedCardStyle: {
+            outlineColor: "rgba(255, 0, 221, 0.6)",
+        },
           slots: [
             document.getElementById("solar2_slot0"),
             document.getElementById("solar2_slot1"),
@@ -512,7 +528,6 @@ define([
     onDeckClick: function () {
       this.bgaPerformAction("actDrawCard");
     },
-
 
     onHandCardClick(card) {
       if (!this.isCurrentPlayerActive()) return;

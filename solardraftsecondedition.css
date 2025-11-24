@@ -78,12 +78,10 @@
 
 #solar-row-1 {
     margin-top: 20px;
-    gap: 1px
 }
 
 #solar-row-2{
     margin-top: 3px;
-    gap: 1px
 }
 
 #discard-pile {
@@ -102,6 +100,15 @@
     margin-top: 20px;
 }
 
+#solar-deck .card:hover{
+    box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
+}
+
+#solar-deck .card.clicked {
+    outline: 3px solid rgba(255, 0, 221, 1);
+    outline-offset: -4px;
+}
+
 .card {
     transition: transform 0.25s ease-in-out;
 }
@@ -117,11 +124,12 @@
     transform: scale(.85);    
 }
 
+
 /* CARD HOVERS */
 #player-hand .card:hover,
 #solar-row-1 .card:hover,
 #solar-row-2 .card:hover {
-    transform: translate(0,0) scale(1.25);
+box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
     z-index: 9999;       
 }
 
