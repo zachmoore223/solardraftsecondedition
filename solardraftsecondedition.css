@@ -108,36 +108,113 @@
     justify-content: flex-start; /* left alignment */
     overflow: hidden; /* prevents spill */  
 }
-
+/**************************************
+ * SOLAR SYSTEM — Horizontal row of slots
+ **************************************/
 .solar-system {
     display: flex;
     flex-direction: row;
-    gap: 6px; /* distance between planets */
-    align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
+    gap: 25px;
+    padding: 30px 0;
 }
 
+/**************************************
+ * Planet Slot: Fixed-width column with 3 rows
+ **************************************/
 .planet-slot {
     display: flex;
     flex-direction: column;
-    align-items: center; /* center moon/planet/comet stack */
-    position: relative;
+    align-items: center;
+    justify-content: flex-start;
+    width: 150px;
+    gap: 0px;
 }
 
+/**************************************
+ * MOONS — Top row (fixed height)
+ **************************************/
 .moon-container {
-    margin-bottom: -40px;
-    z-index: 3;
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 5px;
+    min-height: 70px;  /* Reserve space even when empty */
+    height: 70px;      /* Fixed height */
+    width: 100%;
 }
 
+.moon-container .card {
+    transform: scale(0.50);
+    transform-origin: bottom center;
+}
+
+/* Handle BGA LineStock wrapper */
+.moon-container > div {
+    display: flex;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 5px;
+    height: 100%;
+}
+
+/**************************************
+ * PLANET — Middle row (fixed height)
+ **************************************/
 .planet-container {
-    z-index: 2;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 177px;  /* 236 * 0.75 = 177px */
+    height: 177px;      /* Fixed height */
+    width: 100%;
 }
 
-.comet-container {
-    margin-top: -30px;
-    padding-left: 30px; /* comet offset */
-    z-index: 1;
+.planet-container .card {
+    transform: scale(0.75);
+    transform-origin: center center;
 }
+
+/* Handle BGA LineStock wrapper */
+.planet-container > div {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+/**************************************
+ * COMETS — Bottom row (fixed height)
+ **************************************/
+.comet-container {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 5px;
+    min-height: 85px;  /* Reserve space even when empty */
+    height: 85px;      /* Fixed height */
+    width: 100%;
+}
+
+.comet-container .card {
+    transform: scale(0.60);
+    transform-origin: top center;
+}
+
+/* Handle BGA LineStock wrapper */
+.comet-container > div {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 5px;
+    height: 100%;
+}
+
+
+
+
+
+
 
 
 #solar-deck .card:hover{
