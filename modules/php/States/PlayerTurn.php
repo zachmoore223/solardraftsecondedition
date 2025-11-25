@@ -43,7 +43,8 @@ class PlayerTurn extends GameState
     #[PossibleAction]
     public function actPlayCard(int $card_id, int $activePlayerId)
     {   
-
+        $newRingCount = 0;
+        $newValue = 0;
         // Take card from player's hand
         $card = $this->game->cards->getCard($card_id);
 
@@ -52,26 +53,57 @@ class PlayerTurn extends GameState
 
         // Enrich before sending
         $card = $this->game->enrichCard($card);
-
-        // Handle card counters
+        $cardColor = $card['color'];
+        $cardRings = $card['rings'];
+        
         if ($card['type'] === 'planet') {
-            if ($card['color'] === 'BLUE') {
-                $this->game->blue_planet_count->inc($activePlayerId, 1);
-            }
 
-            if ($card['color'] === 'GREEN') {
-                $this->game->green_planet_count->inc($activePlayerId, 1);
-            }
+            $cardColor = $card['color'];
+            $newValue = null;
 
-             if ($card['color'] === 'RED') {
-                $this->game->red_planet_count->inc($activePlayerId, 1);
-            }
+            switch ($cardColor) {
+                case 'BLUE':
+                    $this->game->blue_planet_count->inc($activePlayerId, 1);
+                    $newValue = $this->game->blue_planet_count->get($activePlayerId);
+                    $counter = 'blue';
+                    break;
 
-            if ($card['color'] === 'TAN') {
-                $this->game->tan_planet_count->inc($activePlayerId, 1);
+                case 'GREEN':
+                    $this->game->green_planet_count->inc($activePlayerId, 1);
+                    $newValue = $this->game->green_planet_count->get($activePlayerId);
+                    $counter = 'green';
+                    break;
+
+                case 'RED':
+                    $this->game->red_planet_count->inc($activePlayerId, 1);
+                    $newValue = $this->game->red_planet_count->get($activePlayerId);
+                    $counter = 'red';
+                    break;
+
+                case 'TAN':
+                    $this->game->tan_planet_count->inc($activePlayerId, 1);
+                    $newValue = $this->game->tan_planet_count->get($activePlayerId);
+                    $counter = 'tan';
+                    break;
             }
         }
+        
+        if ($cardRings > 0){
+            $this->game->ring_count->inc($activePlayerId, 1);
+            $newRingCount = $this->game->ring_count->get($activePlayerId);
+        } 
 
+        if ($card['type'] === 'comet'){
+            $this->game->comet_count->inc($activePlayerId, 1);
+            $newValue = $this->game->comet_count->get($activePlayerId);
+            $counter = 'comet';            
+        }
+
+        if ($card['type'] === 'moon'){
+            $this->game->moon_count->inc($activePlayerId, 1);
+            $newValue = $this->game->moon_count->get($activePlayerId);
+            $counter = 'moon';  
+        }
 
         // Notify all players
         $this->notify->all(
@@ -82,7 +114,9 @@ class PlayerTurn extends GameState
                 'player_name' => $this->game->getPlayerNameById($activePlayerId),
                 'cardName' => $this->game->getCardName($card),
                 'card' => $card,
-                'blue_planet_count' => $this->game->blue_planet_count->get($activePlayerId)
+                'newValue' => $newValue,
+                'counter'   => $counter,
+                'newRingCount'   => $newRingCount,
             ]
         );
 

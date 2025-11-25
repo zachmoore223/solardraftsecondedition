@@ -158,9 +158,9 @@ define([
         this.cardsManager,
         document.getElementById("player-hand"),
         {
-                              selectedCardStyle: {
+          selectedCardStyle: {
             outlineColor: "rgba(255, 0, 221, 12)",
-        },
+          },
           fanShaped: false, // <-- turn off fanning
           cardOverlap: 2, // <-- keep cards flat
           center: false, // <-- optional: left-align
@@ -174,7 +174,7 @@ define([
       });
 
       this.handStock.onCardClick = (card) => {
-         this.bgaPerformAction("actPlayCard", { card_id: card.id });
+        this.bgaPerformAction("actPlayCard", { card_id: card.id });
       };
 
       this.handStock.addCards(Array.from(Object.values(this.gamedatas.hand)));
@@ -193,44 +193,44 @@ define([
       /*******************************
        *          DISCARD PILE        *
        *******************************/
-        this.discardDeck = new BgaCards.DiscardDeck(
+      this.discardDeck = new BgaCards.DiscardDeck(
         this.cardsManager,
         document.getElementById("discard-pile"),
         {
-            maxHorizontalShift: 2,
-            maxRotation: 2,
-            maxVerticalShift: 2,
-            // Only one of these is needed
-            selectableCardStyle: {
-                outlineSize: 0,
+          maxHorizontalShift: 2,
+          maxRotation: 2,
+          maxVerticalShift: 2,
+          // Only one of these is needed
+          selectableCardStyle: {
+            outlineSize: 0,
             outlineColor: "rgba(255, 0, 221, 0.6)",
-            }
+          },
         }
-        );
+      );
 
-        // Add cards to the discard pile
-        this.discardDeck.addCards(
+      // Add cards to the discard pile
+      this.discardDeck.addCards(
         Array.from(Object.values(this.gamedatas.discardPile))
-        );
+      );
 
-        // DiscardDeck doesn't support onCardClick directly
-        // You need to use setSelectionMode and onSelectionChange instead
-        this.discardDeck.setSelectionMode("single");
+      // DiscardDeck doesn't support onCardClick directly
+      // You need to use setSelectionMode and onSelectionChange instead
+      this.discardDeck.setSelectionMode("single");
 
-        this.discardDeck.onSelectionChange = (selection, lastChange) => {
+      this.discardDeck.onSelectionChange = (selection, lastChange) => {
         console.log("=== DISCARD PILE CARD SELECTED ===");
         console.log("Selected cards:", selection);
         console.log("Last changed card:", lastChange);
-        
+
         if (selection.length > 0) {
-            const card = selection[0];
-            console.log("Selected card from discard:", card);
-            
-            // Do something with the selected card
-            // For example:
-            // this.bgaPerformAction("actTakeFromDiscard", { card_id: parseInt(card.id) });
+          const card = selection[0];
+          console.log("Selected card from discard:", card);
+
+          // Do something with the selected card
+          // For example:
+          // this.bgaPerformAction("actTakeFromDiscard", { card_id: parseInt(card.id) });
         }
-        };
+      };
 
       /*******************************
        *          SOLAR ROWS          *
@@ -243,9 +243,9 @@ define([
           selectableCardStyle: {
             outlineSize: 0,
           },
-                  selectedCardStyle: {
-            outlineColor: "rgba(255, 0, 221, 0.6)"
-        },
+          selectedCardStyle: {
+            outlineColor: "rgba(255, 0, 221, 0.6)",
+          },
           slots: [
             document.getElementById("solar1_slot0"),
             document.getElementById("solar1_slot1"),
@@ -265,9 +265,9 @@ define([
           selectableCardStyle: {
             outlineSize: 0,
           },
-                            selectedCardStyle: {
-            outlineColor: "rgba(255, 0, 221, 0.6)"
-        },
+          selectedCardStyle: {
+            outlineColor: "rgba(255, 0, 221, 0.6)",
+          },
           slots: [
             document.getElementById("solar2_slot0"),
             document.getElementById("solar2_slot1"),
@@ -355,14 +355,14 @@ define([
                     `
         );
       });
-    // Local player = the one whose browser is rendering the UI
-    const localPlayerId = this.player_id;
+      // Local player = the one whose browser is rendering the UI
+      const localPlayerId = this.player_id;
 
-    // Find this player's tableau container
-    const myWrapper = document.querySelector(`.playertable_${localPlayerId}`);
+      // Find this player's tableau container
+      const myWrapper = document.querySelector(`.playertable_${localPlayerId}`);
 
-    // Move it into the personal solar system area
-    document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
+      // Move it into the personal solar system area
+      document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
       //create LineStocks for each tableau
       this.tableauStocks = {};
 
@@ -374,16 +374,16 @@ define([
 
         // Load tableau cards from server
         if (gamedatas.tableau[player.id]) {
-              const tableauCards = Object.values(gamedatas.tableau[player.id]);
+          const tableauCards = Object.values(gamedatas.tableau[player.id]);
           this.tableauStocks[player.id].addCards(tableauCards);
         }
       });
 
-      console.log('TABLEAU GAMEDATAS:', gamedatas.tableau);
+      console.log("TABLEAU GAMEDATAS:", gamedatas.tableau);
       /*******************************
        *         PLAYER PANELS        *
        *******************************/
-      this.counters = {};  // make sure this exists before the loop
+      this.counters = {}; // make sure this exists before the loop
       // Player boards (keep it simple for now)
       for (var playerId in gamedatas.players) {
         if (!gamedatas.players.hasOwnProperty(playerId)) continue;
@@ -447,27 +447,31 @@ define([
         //
         this.counters[playerId] = {};
         const counterList = [
-            { name: "blue",  id: `blue-planet-counter-${playerId}`, default: 0 },
-            { name: "green", id: `green-planet-counter-${playerId}`, default: 0 },
-            { name: "red",   id: `red-planet-counter-${playerId}`, default: 0 },
-            { name: "tan",   id: `tan-planet-counter-${playerId}`, default: 0 },
+          { name: "blue", id: `blue-planet-counter-${playerId}`, default: this.counters[playerId].blue },
+          { name: "green", id: `green-planet-counter-${playerId}`, default: this.counters[playerId].green },
+          { name: "red", id: `red-planet-counter-${playerId}`, default: this.counters[playerId].red },
+          { name: "tan", id: `tan-planet-counter-${playerId}`, default: this.counters[playerId].tan },
 
-            { name: "comet", id: `comet-counter-${playerId}`, default: 0 },
-            { name: "moon",  id: `moon-counter-${playerId}`, default: 0 },
-            { name: "ring",  id: `ring-counter-${playerId}`, default: 0 },
+          { name: "comet", id: `comet-counter-${playerId}`, default: this.counters[playerId].comet },
+          { name: "moon", id: `moon-counter-${playerId}`, default: this.counters[playerId].moon },
+          { name: "ring", id: `ring-counter-${playerId}`, default: this.counters[playerId].ring },
 
-            // Hand counter uses real value
-            { name: "hand",  id: `hand-counter-${playerId}`, default: gamedatas.cardsInHand[playerId] ?? 0 },
+          // Hand counter uses real value
+          {
+            name: "hand",
+            id: `hand-counter-${playerId}`,
+            default: gamedatas.cardsInHand[playerId] ?? 0,
+          },
         ];
 
         for (let entry of counterList) {
-            const counter = new ebg.counter();
-            counter.create(entry.id);
-            counter.setValue(entry.default);
-            this.counters[playerId][entry.name] = counter;
+          const counter = new ebg.counter();
+          counter.create(entry.id);
+          counter.setValue(entry.default);
+          this.counters[playerId][entry.name] = counter;
         }
-    }
-      
+      }
+
       this.setupNotifications();
 
       console.log("Ending game setup");
@@ -604,21 +608,36 @@ define([
       console.log("notif_cardPlayed", notif);
       const card = notif.card;
       const playerId = notif.player_id;
-      const blue_planet_count = notif.blue_planet_count
-        
-      this.counters[playerId].blue.setValue(blue_planet_count);
+      const newValue = notif.newValue;
+      const counter = notif.counter;
+      const newRingCount = notif.newRingCount;
 
-        if(card.type == 'planet'){
-            console.log("PLANET PLAYED");
+      if (card.type == "planet") {
+        if (counter == "blue"){
+            this.counters[playerId].blue.setValue(newValue);
         }
+        if (counter == "green"){
+            this.counters[playerId].green.setValue(newValue);
+        }
+        if (counter == "red"){
+            this.counters[playerId].red.setValue(newValue);
+        }
+        if (counter == "tan"){
+            this.counters[playerId].tan.setValue(newValue);
+        }
+      }
 
-        if(card.type == 'comet'){
-            console.log("COMET PLAYED");
-        }
+      if(newRingCount > 0){
+        this.counters[playerId].ring.setValue(newRingCount);
+      }
 
-        if(card.type == 'moon'){
-            console.log("MOON PLAYED");
-        }
+      if (card.type == "comet") {
+        this.counters[playerId].comet.setValue(newValue);
+      }
+
+      if (card.type == "moon") {
+        this.counters[playerId].moon.setValue(newValue);
+      }
       // Remove from hand if it's the current player's card
       if (playerId == this.player_id) {
         await this.handStock.removeCard(card);
@@ -630,7 +649,7 @@ define([
       }
     },
 
-     /**
+    /**
      * Handle deck draw notification (public - just shows someone drew)
      */
     notif_deckDraw: async function (notif) {

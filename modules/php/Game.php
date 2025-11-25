@@ -31,7 +31,8 @@ class Game extends \Bga\GameFramework\Table
     public PlayerCounter $red_planet_count;
     public PlayerCounter $tan_planet_count;
     public PlayerCounter $comet_count;
-    public PlayerCounter $moon_count;       
+    public PlayerCounter $moon_count;
+    public PlayerCounter $ring_count;        
     public $cards;
     const LOCATION_DECK = 'deck';
     const LOCATION_DISCARD = 'discardPile';
@@ -54,7 +55,7 @@ class Game extends \Bga\GameFramework\Table
             7 => ['name' => 'Halley',            'color' => 'BLUE',  'points' => 3,  'ability' => 'Score 1 point for each COMET.',                                                                  'rings' => 0,   'size' => 'SMALL',      'moonUnlock'=> false,   'moonUnlockReq'=> null, 'moonUnlockAbility'=> null],
             8 => ['name' => 'Cometviewer',       'color' => 'BLUE',  'points' => 3,  'ability' => 'When played, you may immediately PLAY A COMET.',                                                 'rings' => 3,   'size' => 'SMALL',      'moonUnlock'=> false,   'moonUnlockReq'=> null, 'moonUnlockAbility'=> null],
             9 => ['name' => 'Diluna',            'color' => 'BLUE',  'points' => 1,  'ability' => 'When played, you may immediately PLAY up TWO MOONS onto this planet.',                           'rings' => 2,   'size' => 'SMALL',      'moonUnlock'=> false,   'moonUnlockReq'=> null, 'moonUnlockAbility'=> null],
-            10 => ['name' => 'Lone Wolf',        'color' => 'BLUE',  'points' => 2,  'ability' => 'Score 8 points if this is your ONLY MEDIUM PLANET.',                                             'rings' => 0,   'size' => 'MEDIUM',     'moonUnlock'=> false,   'moonUnlockReq'=> null, 'moonUnlockAbility'=> null],
+            10 => ['name' => 'Lone Wolf',        'color' => 'BLUE',  'points' => 2,  'ability' => 'Score 8 points if this is your ONLY MEDIUM PLANET.',                                             'rings' => 3,   'size' => 'MEDIUM',     'moonUnlock'=> false,   'moonUnlockReq'=> null, 'moonUnlockAbility'=> null],
             11 => ['name' => 'Luke',             'color' => 'BLUE',  'points' => 2,  'ability' => 'Score 8 points if this planet has exactly 2 MOONS orbiting it.',                                 'rings' => 2,   'size' => 'MEDIUM',     'moonUnlock'=> false,   'moonUnlockReq'=> null, 'moonUnlockAbility'=> null],
             12 => ['name' => 'Diazure',          'color' => 'BLUE',  'points' => 4,  'ability' => 'This counts as two MEDIUM BLUE PLANETS.',                                                        'rings' => 0,   'size' => 'MEDIUM',     'moonUnlock'=> false,   'moonUnlockReq'=> null, 'moonUnlockAbility'=> null],
             13 => ['name' => 'Octo',             'color' => 'BLUE',  'points' => 1,  'ability' => 'Score 5 points if you have at least 8 PLANETS.',                                                 'rings' => 3,   'size' => 'LARGE',      'moonUnlock'=> false,   'moonUnlockReq'=> null, 'moonUnlockAbility'=> null],
@@ -185,6 +186,7 @@ class Game extends \Bga\GameFramework\Table
         $this->tan_planet_count = $this->counterFactory->createPlayerCounter('tan_planet_count');
         $this->comet_count = $this->counterFactory->createPlayerCounter('comet_count');
         $this->moon_count = $this->counterFactory->createPlayerCounter('moon_count');
+        $this->ring_count = $this->counterFactory->createPlayerCounter('ring_count');
         $this->cards = $this->deckFactory->createDeck('card');
         $this->cards->init('card');
 
@@ -277,6 +279,7 @@ class Game extends \Bga\GameFramework\Table
         $this->tan_planet_count->fillResult($result);
         $this->comet_count->fillResult($result);
         $this->moon_count->fillResult($result);
+        $this->ring_count->fillResult($result);
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
@@ -337,7 +340,8 @@ class Game extends \Bga\GameFramework\Table
         $this->red_planet_count->initDb(array_keys($players));
         $this->tan_planet_count->initDb(array_keys($players));
         $this->comet_count->initDb(array_keys($players));
-        $this->moon_count->initDb(array_keys($players));                
+        $this->moon_count->initDb(array_keys($players));
+        $this->ring_count->initDb(array_keys($players));                     
         // Set the colors of the players with HTML color code. The default below is red/green/blue/orange/brown. The
         // number of colors defined here must correspond to the maximum number of players allowed for the gams.
         $gameinfos = $this->getGameinfos();
@@ -522,6 +526,7 @@ class Game extends \Bga\GameFramework\Table
         $card['name'] = $info['name'] ?? null;
         $card['color'] = $info['color'] ?? null;
         $card['points'] = $info['points'] ?? null;
+        $card['rings'] = $info['rings'] ?? null;
         $card['ability'] = $info['ability'] ?? null;
         $card['moonUnlock'] = $info['moonUnlock'] ?? null;
         $card['moonUnlockReq'] = $info['moonUnlockReq'] ?? null;
