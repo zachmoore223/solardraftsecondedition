@@ -89,7 +89,7 @@ class PlayerTurn extends GameState
         }
         
         if ($cardRings > 0){
-            $this->game->ring_count->inc($activePlayerId, 1);
+            $this->game->ring_count->inc($activePlayerId, $cardRings);
             $newRingCount = $this->game->ring_count->get($activePlayerId);
         } 
 

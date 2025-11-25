@@ -350,7 +350,12 @@ define([
                         <div class="playertablename" style="color:#${player.color};">
                             <b>Solar System - ${player.name}</b>
                         </div>
-                        <div id="tableau_${player.id}"></div>
+                        
+                        <div id="tableau_${player.id}">
+                            <div id="moons-tableau_${player.id}"></div>
+                            <div id="planets-tableau_${player.id}"></div>
+                            <div id="planets-tableau_${player.id}"></div>
+                        </div>
                     </div>
                     `
         );
@@ -447,21 +452,14 @@ define([
         //
         this.counters[playerId] = {};
         const counterList = [
-          { name: "blue", id: `blue-planet-counter-${playerId}`, default: this.counters[playerId].blue },
-          { name: "green", id: `green-planet-counter-${playerId}`, default: this.counters[playerId].green },
-          { name: "red", id: `red-planet-counter-${playerId}`, default: this.counters[playerId].red },
-          { name: "tan", id: `tan-planet-counter-${playerId}`, default: this.counters[playerId].tan },
-
-          { name: "comet", id: `comet-counter-${playerId}`, default: this.counters[playerId].comet },
-          { name: "moon", id: `moon-counter-${playerId}`, default: this.counters[playerId].moon },
-          { name: "ring", id: `ring-counter-${playerId}`, default: this.counters[playerId].ring },
-
-          // Hand counter uses real value
-          {
-            name: "hand",
-            id: `hand-counter-${playerId}`,
-            default: gamedatas.cardsInHand[playerId] ?? 0,
-          },
+                { name: "blue",  id: `blue-planet-counter-${playerId}`,  default:  gamedatas.players[playerId].blue_planet_count ?? 0 },
+                { name: "green", id: `green-planet-counter-${playerId}`, default:  gamedatas.players[playerId].green_planet_count ?? 0},
+                { name: "red",   id: `red-planet-counter-${playerId}`,   default:  gamedatas.players[playerId].red_planet_count ?? 0 },
+                { name: "tan",   id: `tan-planet-counter-${playerId}`,   default:  gamedatas.players[playerId].tan_planet_count ?? 0 },
+                { name: "comet", id: `comet-counter-${playerId}`,        default:  gamedatas.players[playerId].comet_count ?? 0 },
+                { name: "moon",  id: `moon-counter-${playerId}`,         default:  gamedatas.players[playerId].moon_count ?? 0 },
+                { name: "ring",  id: `ring-counter-${playerId}`,         default:  gamedatas.players[playerId].ring_count ?? 0 },
+                { name: "hand",  id: `hand-counter-${playerId}`,         default:  gamedatas.cardsInHand[playerId] ?? 0  },
         ];
 
         for (let entry of counterList) {
@@ -473,7 +471,7 @@ define([
       }
 
       this.setupNotifications();
-
+console.log("FULL GAMEDATAS:", gamedatas);
       console.log("Ending game setup");
     },
 

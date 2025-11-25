@@ -273,6 +273,7 @@ class Game extends \Bga\GameFramework\Table
         $result["players"] = $this->getCollectionFromDb(
             "SELECT `player_id` `id`, `player_score` `score` FROM `player`"
         );
+        
         $this->blue_planet_count->fillResult($result);
         $this->green_planet_count->fillResult($result);
         $this->red_planet_count->fillResult($result);
@@ -297,7 +298,6 @@ class Game extends \Bga\GameFramework\Table
                 $this->cards->countCardsInLocation('hand', $p_id);
         }
 
-        $result['cardsInHand'] = $this->cards->countCardsInLocation('hand', $current_player_id);
         $result['cardsInDiscard'] = $this->cards->countCardsInLocation(self::LOCATION_DISCARD);
         $result['cardsRemaining'] = $this->cards->countCardsInLocation('deck');
         $result['deckTop'] = $top ? $this->enrichCard($top) : null;
