@@ -52,6 +52,8 @@ define([
       const cardWidth = 150;
       const cardHeight = 236;
       var cardsRemaining = gamedatas.cardsRemaining;
+      var cardsInDiscard = gamedatas.cardsInDiscard;
+      var cardsInHand = gamedatas.cardsInHand;
       // create the animation manager, and bind it to the `game.bgaAnimationsActive()` function
       this.animationManager = new BgaAnimations.Manager({
         animationsActive: () => this.bgaAnimationsActive(),
@@ -136,7 +138,7 @@ define([
 
                 <!-- Row 2, Col 2 --> 
                 <div id="discard-pile_wrap" class="whiteblock">
-                    <b class="section-label-discard">Discard Pile</b>  
+                    <b class="section-label-discard">Discard Pile (<span id="deck-count">${cardsInDiscard}</span>)</b>  
                     <div id="discard-pile"></div>
                 <div>
 
@@ -157,7 +159,7 @@ define([
         document.getElementById("player-hand"),
         {
                               selectedCardStyle: {
-            outlineColor: "rgba(255, 0, 221, 1)",
+            outlineColor: "rgba(255, 0, 221, 12)",
         },
           fanShaped: false, // <-- turn off fanning
           cardOverlap: 2, // <-- keep cards flat
@@ -172,8 +174,7 @@ define([
       });
 
       this.handStock.onCardClick = (card) => {
-        this.tableauStocks[card.location_arg].addCard([card]);
-        this.bgaPerformAction("actPlayCard", { card_id: card.id });
+         this.bgaPerformAction("actPlayCard", { card_id: card.id });
       };
 
       this.handStock.addCards(Array.from(Object.values(this.gamedatas.hand)));
@@ -192,33 +193,44 @@ define([
       /*******************************
        *          DISCARD PILE        *
        *******************************/
-      this.discardDeck = new BgaCards.DiscardDeck(
+        this.discardDeck = new BgaCards.DiscardDeck(
         this.cardsManager,
         document.getElementById("discard-pile"),
         {
-          maxHorizontalShift: 2,
-          maxRotation: 2,
-          maxVerticalShift: 2,
-                              selectedCardStyle: {
-            outlineColor: "rgba(255, 0, 221, 1)",
-        },
-          lastCardPlayedStyle: {
-            class: "CardStock",
-            utlineColor: "orange",
-            outlineSize: 5,
-          },
+            maxHorizontalShift: 2,
+            maxRotation: 2,
+            maxVerticalShift: 2,
+            // Only one of these is needed
+            selectableCardStyle: {
+                outlineSize: 0,
+            outlineColor: "rgba(255, 0, 221, 0.6)",
+            }
         }
-      );
+        );
 
-
-      this.discardDeck.addCards(
+        // Add cards to the discard pile
+        this.discardDeck.addCards(
         Array.from(Object.values(this.gamedatas.discardPile))
-      );
+        );
 
-      this.discardDeck = new BgaCards.DiscardDeck(
-        this.cardsManager,
-        document.getElementById("discard-pile")
-      );
+        // DiscardDeck doesn't support onCardClick directly
+        // You need to use setSelectionMode and onSelectionChange instead
+        this.discardDeck.setSelectionMode("single");
+
+        this.discardDeck.onSelectionChange = (selection, lastChange) => {
+        console.log("=== DISCARD PILE CARD SELECTED ===");
+        console.log("Selected cards:", selection);
+        console.log("Last changed card:", lastChange);
+        
+        if (selection.length > 0) {
+            const card = selection[0];
+            console.log("Selected card from discard:", card);
+            
+            // Do something with the selected card
+            // For example:
+            // this.bgaPerformAction("actTakeFromDiscard", { card_id: parseInt(card.id) });
+        }
+        };
 
       /*******************************
        *          SOLAR ROWS          *
@@ -232,7 +244,7 @@ define([
             outlineSize: 0,
           },
                   selectedCardStyle: {
-            outlineColor: "rgba(255, 0, 221, 0.6)",
+            outlineColor: "rgba(255, 0, 221, 0.6)"
         },
           slots: [
             document.getElementById("solar1_slot0"),
@@ -254,7 +266,7 @@ define([
             outlineSize: 0,
           },
                             selectedCardStyle: {
-            outlineColor: "rgba(255, 0, 221, 0.6)",
+            outlineColor: "rgba(255, 0, 221, 0.6)"
         },
           slots: [
             document.getElementById("solar2_slot0"),
@@ -343,13 +355,14 @@ define([
                     `
         );
       });
+    // Local player = the one whose browser is rendering the UI
+    const localPlayerId = this.player_id;
 
-      //move active player's tableau to MySolarSystem
-      const myWrapper = document.querySelector(
-        `.playertable_${activePlayerId}`
-      );
-      document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
+    // Find this player's tableau container
+    const myWrapper = document.querySelector(`.playertable_${localPlayerId}`);
 
+    // Move it into the personal solar system area
+    document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
       //create LineStocks for each tableau
       this.tableauStocks = {};
 
@@ -361,13 +374,16 @@ define([
 
         // Load tableau cards from server
         if (gamedatas.tableau[player.id]) {
-          this.tableauStocks[player.id].addCards(gamedatas.tableau[player.id]);
+              const tableauCards = Object.values(gamedatas.tableau[player.id]);
+          this.tableauStocks[player.id].addCards(tableauCards);
         }
       });
 
+      console.log('TABLEAU GAMEDATAS:', gamedatas.tableau);
       /*******************************
        *         PLAYER PANELS        *
        *******************************/
+      this.counters = {};  // make sure this exists before the loop
       // Player boards (keep it simple for now)
       for (var playerId in gamedatas.players) {
         if (!gamedatas.players.hasOwnProperty(playerId)) continue;
@@ -378,20 +394,78 @@ define([
         if (playerPanel) {
           playerPanel.insertAdjacentHTML(
             "beforeend",
-            '<div class="energy-wrapper">' +
-              '<span id="energy-player-counter-' +
-              playerId +
-              '"></span> Energy' +
-              "</div>"
+            `
+                <div class="player-counters-grid">
+                
+                    <div class="counter-block">
+                        <img class="counter-icon" src="${g_gamethemeurl}img/counter-bluePlanet.png"/>
+                        <span id="blue-planet-counter-${playerId}" class="counter-value"></span>
+                    </div>
+
+                    <div class="counter-block">
+                        <img class="counter-icon" src="${g_gamethemeurl}img/counter-greenPlanet.png"/>
+                        <span id="green-planet-counter-${playerId}" class="counter-value"></span>
+                    </div>
+
+                    <div class="counter-block">
+                        <img class="counter-icon" src="${g_gamethemeurl}img/counter-redPlanet.png"/>
+                        <span id="red-planet-counter-${playerId}" class="counter-value"></span>
+                    </div>
+
+                    <div class="counter-block">
+                        <img class="counter-icon" src="${g_gamethemeurl}img/counter-tanPlanet.png"/>
+                        <span id="tan-planet-counter-${playerId}" class="counter-value"></span>
+                    </div>
+
+                    <div class="counter-block">
+                        <img class="counter-icon" src="${g_gamethemeurl}img/counter-comet.png"/>
+                        <span id="comet-counter-${playerId}" class="counter-value"></span>
+                    </div>
+
+                    <div class="counter-block">
+                        <img class="counter-icon" src="${g_gamethemeurl}img/counter-moon.png"/>
+                        <span id="moon-counter-${playerId}" class="counter-value"></span>
+                    </div>
+
+                    <div class="counter-block">
+                        <img class="counter-icon" src="${g_gamethemeurl}img/counter-ring.png"/>
+                        <span id="ring-counter-${playerId}" class="counter-value"></span>
+                    </div>
+
+                    <div class="counter-block">
+                        <img class="counter-icon" src="${g_gamethemeurl}img/counter-hand.png"/>
+                        <span id="hand-counter-${playerId}" class="counter-value"></span>
+                    </div>
+
+                </div>
+            `
           );
         }
 
-        // Just create the counter, set a fixed value 2 for now
-        var c = new ebg.counter();
-        c.create("energy-player-counter-" + playerId);
-        c.setValue(2);
-      }
+        c = new ebg.counter();
+        c.create("blue-planet-counter-" + playerId);
+        c.setValue(0);
+        c.create("green-planet-counter-" + playerId);
+        c.setValue(0);
+        c.create("red-planet-counter-" + playerId);
+        c.setValue(0);
+        c.create("tan-planet-counter-" + playerId);
+        c.setValue(0);
+        c.create("comet-counter-" + playerId);
+        c.setValue(0);
+        c.create("moon-counter-" + playerId);
+        c.setValue(0);
+        c.create("ring-counter-" + playerId);
+        c.setValue(0)
+        c.create("hand-counter-" + playerId);
+        c.setValue(gamedatas.cardsInHand[playerId])
 
+        //c.setValue(gamedatas.blue_planet_count[playerId]);
+        console.log(c)
+
+
+      }
+      
       this.setupNotifications();
 
       console.log("Ending game setup");
@@ -477,32 +551,6 @@ define([
             script.
         
         */
-    addCardToDiscard: function (card) {
-      var container = document.getElementById("discard-pile");
-
-      if (!container) {
-        console.error("Discard pile container missing");
-        return;
-      }
-
-      var cardDiv = dojo.create(
-        "div",
-        {
-          id: "discard_" + card.id,
-          class: "card card_" + card.type_arg,
-        },
-        container
-      );
-
-      dojo.connect(
-        cardDiv,
-        "onclick",
-        dojo.hitch(this, function () {
-          console.log("Clicked discard pile card", card.id);
-        })
-      );
-    },
-
     addCardBackToDeck(card) {
       if (!card) {
         return;
@@ -528,13 +576,6 @@ define([
     onDeckClick: function () {
       this.bgaPerformAction("actDrawCard");
     },
-
-    onHandCardClick(card) {
-      if (!this.isCurrentPlayerActive()) return;
-      console.log("Client: clicked card", card);
-      this.bgaPerformAction("actPlayCard", { card_id: Number(card.id) });
-    },
-
     ///////////////////////////////////////////////////
     //// Reaction to cometD notifications
 
@@ -559,10 +600,28 @@ define([
      */
     notif_cardPlayed: async function (notif) {
       console.log("notif_cardPlayed", notif);
+      const card = notif.card;
+      const playerId = notif.player_id;
+      const blue_planet_count = notif.blue_planet_count
+    
+      //update counters
+        this.counters[playerId].setValue(20);
+      //this.counter["blue-planet-counter-" + playerId].setValue(blue_planet_count);
+      this.counter.setValue(20)
+        // Optional: animate it
+        this.animateCounterBounce(playerId);
 
-      const card = notif.args.card || notif.args;
-      const playerId = notif.args.player_id;
+        if(card.type == 'planet'){
+            console.log("PLANET PLAYED");
+        }
 
+        if(card.type == 'comet'){
+            console.log("COMET PLAYED");
+        }
+
+        if(card.type == 'moon'){
+            console.log("MOON PLAYED");
+        }
       // Remove from hand if it's the current player's card
       if (playerId == this.player_id) {
         await this.handStock.removeCard(card);
@@ -574,7 +633,7 @@ define([
       }
     },
 
-    /**
+     /**
      * Handle deck draw notification (public - just shows someone drew)
      */
     notif_deckDraw: async function (notif) {

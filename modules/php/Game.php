@@ -26,7 +26,7 @@ use Bga\GameFramework\Components\Counters\PlayerCounter;
 class Game extends \Bga\GameFramework\Table
 {
 
-    public PlayerCounter $playerEnergy;
+    public PlayerCounter $blue_planet_count;
 
     public $cards;
     const LOCATION_DECK = 'deck';
@@ -175,7 +175,7 @@ class Game extends \Bga\GameFramework\Table
 
         $this->initGameStateLabels([]); // mandatory, even if the array is empty
 
-        $this->playerEnergy = $this->counterFactory->createPlayerCounter('energy');
+        $this->blue_planet_count = $this->counterFactory->createPlayerCounter('blue_planet_count');
 
         $this->cards = $this->deckFactory->createDeck('card');
         $this->cards->init('card');
@@ -263,28 +263,30 @@ class Game extends \Bga\GameFramework\Table
         $result["players"] = $this->getCollectionFromDb(
             "SELECT `player_id` `id`, `player_score` `score` FROM `player`"
         );
-        $this->playerEnergy->fillResult($result);
+        $this->blue_planet_count->fillResult($result);
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
-        //$solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
-        //$solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
         $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
 
         $result['tableau'] = [];
-
-        foreach ($result['players'] as $p_id => $player) {
-                // Always return tableaus — even if empty
-                $cards = $this->cards->getCardsInLocation('tableau', $p_id);
-
-            $result['tableau'][$p_id] = $cards;
+        foreach ($result['players'] as $p_id => $player) {           
+            $cards = $this->cards->getCardsInLocation('tableau', $p_id);
+            $result['tableau'][$p_id] = $this->enrichCards($cards);
         }
+
+        $result['cardsInHand'] = [];
+        foreach ($result['players'] as $p_id => $player) {
+            $result['cardsInHand'][$p_id] = 
+                $this->cards->countCardsInLocation('hand', $p_id);
+        }
+
+        $result['cardsInHand'] = $this->cards->countCardsInLocation('hand', $current_player_id);
+        $result['cardsInDiscard'] = $this->cards->countCardsInLocation(self::LOCATION_DISCARD);
         $result['cardsRemaining'] = $this->cards->countCardsInLocation('deck');
         $result['deckTop'] = $top ? $this->enrichCard($top) : null;
         $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
         $result['discardPile'] = $this->enrichCards($discardPile);
-        //$result['solarRow1'] = $this->enrichCards($solarRow1);
-        //$result['solarRow2'] = $this->enrichCards($solarRow2);
 
         $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
         $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
@@ -307,7 +309,7 @@ class Game extends \Bga\GameFramework\Table
         $result['solarRow2'] = $solarRow2Slots;
 
 
-                return $result;
+        return $result;
     }
 
     /**
@@ -316,7 +318,7 @@ class Game extends \Bga\GameFramework\Table
      */
     protected function setupNewGame($players, $options = [])
     {
-        $this->playerEnergy->initDb(array_keys($players), initialValue: 2);
+        $this->blue_planet_count->initDb(array_keys($players));
 
         // Set the colors of the players with HTML color code. The default below is red/green/blue/orange/brown. The
         // number of colors defined here must correspond to the maximum number of players allowed for the gams.
@@ -412,8 +414,9 @@ class Game extends \Bga\GameFramework\Table
         *******************************/
         // ****will need to chagnes this to be a stack of cards, starting with three cards and one of each type****
         //***** will need to go before deck creation and shuffling once ready
-        $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 3);
-        
+        for ($i = 0; $i < 3; $i++) {
+            $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 3);
+        }
 
         /*******************************
         *          PLAYER HANDS        *

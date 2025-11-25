@@ -88,6 +88,7 @@
     background: none !important;
     border: none !important;
     box-shadow: none !important;
+    margin-top: 20px;
 }
 
 #player-hand {
@@ -100,11 +101,42 @@
     margin-top: 20px;
 }
 
+#mysolarsystem_wrap{
+    display: flex;
+    flex-wrap: nowrap; /* keep cards on one row */
+    align-items: center;
+    justify-content: flex-start; /* left alignment */
+    overflow: hidden; /* prevents spill */  
+}
+
+#mysolarsystem_wrap .card {
+    width: var(--card-width);
+    margin-right: var(--gap);
+
+    transform-origin: top left;
+
+    /* AUTO-SHRINK FORMULA */
+    transform: scale(
+        min(
+            1,
+            calc(
+                100% /
+                (var(--card-width) * var(--num-cards) + var(--gap) * (var(--num-cards) - 1))
+            )
+        )
+    );
+}
+
 #solar-deck .card:hover{
     box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
 }
 
 #solar-deck .card.clicked {
+    outline: 3px solid rgba(255, 0, 221, 1);
+    outline-offset: -4px;
+}
+
+#discard-pile .card.clicked {
     outline: 3px solid rgba(255, 0, 221, 1);
     outline-offset: -4px;
 }
@@ -120,15 +152,13 @@
     transition: transform 0.25s ease-in-out;
 }
 
-#discard-pile .card {
-    transform: scale(.85);    
-}
 
 
 /* CARD HOVERS */
 #player-hand .card:hover,
 #solar-row-1 .card:hover,
-#solar-row-2 .card:hover {
+#solar-row-2 .card:hover,
+#discard-pile .card:hover {
 box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
     z-index: 9999;       
 }
@@ -159,4 +189,36 @@ box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
     align-self: flex-start;
     margin-bottom: 2px;
     font-weight: bold;
+}
+/* The whole grid for all counters */
+.player-counters-grid {
+    display: grid;
+    grid-template-columns: repeat(4, auto); /* 4 per row */
+    gap: 10px 15px; /* row gap, column gap */
+    /* center rows AND columns */
+    justify-content: center; /* centers the whole grid horizontally */
+    justify-items: center;   /* centers each item horizontally in its cell */
+    align-content: center;   /* centers all rows vertically when possible */
+    align-items: center;     /* centers items vertically within each cell */
+    margin-top: 4px;
+}
+
+/* A block containing one icon + its number */
+.counter-block {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+/* All icons */
+.counter-icon {
+    width: 20px;
+    height: 20x;
+    object-fit: contain;
+}
+
+/* Numbers next to icons */
+.counter-value {
+    font-size: 20px;
+    line-height: 1;
 }

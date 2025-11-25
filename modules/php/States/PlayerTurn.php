@@ -40,33 +40,34 @@ class PlayerTurn extends GameState
     /*******************
      *   PLAY A CARD   *           
      *******************/
-        #[PossibleAction]
-        public function actPlayCard(int $card_id)
-        {
-            $activePlayerId = (int) $this->game->getCurrentPlayerId();
+    #[PossibleAction]
+    public function actPlayCard(int $card_id, int $activePlayerId)
+    {   $this->game->blue_planet_count->inc($activePlayerId, 1);
 
-            // Take card from player's hand
-            $card = $this->game->cards->getCard($card_id);
+        // Take card from player's hand
+        $card = $this->game->cards->getCard($card_id);
 
-            // Move card to the player's tableau
-            $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
+        // Move card to the player's tableau
+        $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
 
-            // Enrich before sending
-            $card = $this->game->enrichCard($card);
+        // Enrich before sending
+        $card = $this->game->enrichCard($card);
 
-            // Notify all players - IMPORTANT: include the card object!
-            $this->notify->all(
-                'cardPlayed',
-                '${player_name} plays ${cardName}.',
-                [
-                    'player_id' => $activePlayerId,
-                    'player_name' => $this->game->getPlayerNameById($activePlayerId),
-                    'cardName' => $this->game->getCardName($card),
-                    'card' => $card  // ADD THIS LINE
-                ]
-            );
-        }
+        // Notify all players
+        $this->notify->all(
+            'cardPlayed',
+            '${player_name} plays ${cardName}.',
+            [
+                'player_id' => $activePlayerId,
+                'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                'cardName' => $this->game->getCardName($card),
+                'card' => $card,
+                'blue_planet_count' => $this->game->blue_planet_count->get($activePlayerId)
+            ]
+        );
 
+        return PlayerTurn::class;
+    }
     /*******************
      *   DRAFT A CARD  *           
      *******************/
@@ -116,7 +117,8 @@ class PlayerTurn extends GameState
                 'player_name' => $this->game->getPlayerNameById($activePlayerId),
                 'deckTop' => $deckTop,
                 'newDeckTop' => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
-                'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK)
+                'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK),
+                'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId)
             ]
         );
 
