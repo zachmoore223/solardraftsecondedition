@@ -442,29 +442,31 @@ define([
           );
         }
 
-        c = new ebg.counter();
-        c.create("blue-planet-counter-" + playerId);
-        c.setValue(0);
-        c.create("green-planet-counter-" + playerId);
-        c.setValue(0);
-        c.create("red-planet-counter-" + playerId);
-        c.setValue(0);
-        c.create("tan-planet-counter-" + playerId);
-        c.setValue(0);
-        c.create("comet-counter-" + playerId);
-        c.setValue(0);
-        c.create("moon-counter-" + playerId);
-        c.setValue(0);
-        c.create("ring-counter-" + playerId);
-        c.setValue(0)
-        c.create("hand-counter-" + playerId);
-        c.setValue(gamedatas.cardsInHand[playerId])
+        //
+        // CORRECT COUNTER DEFINITIONS
+        //
+        this.counters[playerId] = {};
+        const counterList = [
+            { name: "blue",  id: `blue-planet-counter-${playerId}`, default: 0 },
+            { name: "green", id: `green-planet-counter-${playerId}`, default: 0 },
+            { name: "red",   id: `red-planet-counter-${playerId}`, default: 0 },
+            { name: "tan",   id: `tan-planet-counter-${playerId}`, default: 0 },
 
-        //c.setValue(gamedatas.blue_planet_count[playerId]);
-        console.log(c)
+            { name: "comet", id: `comet-counter-${playerId}`, default: 0 },
+            { name: "moon",  id: `moon-counter-${playerId}`, default: 0 },
+            { name: "ring",  id: `ring-counter-${playerId}`, default: 0 },
 
+            // Hand counter uses real value
+            { name: "hand",  id: `hand-counter-${playerId}`, default: gamedatas.cardsInHand[playerId] ?? 0 },
+        ];
 
-      }
+        for (let entry of counterList) {
+            const counter = new ebg.counter();
+            counter.create(entry.id);
+            counter.setValue(entry.default);
+            this.counters[playerId][entry.name] = counter;
+        }
+    }
       
       this.setupNotifications();
 
@@ -603,13 +605,8 @@ define([
       const card = notif.card;
       const playerId = notif.player_id;
       const blue_planet_count = notif.blue_planet_count
-    
-      //update counters
-        this.counters[playerId].setValue(20);
-      //this.counter["blue-planet-counter-" + playerId].setValue(blue_planet_count);
-      this.counter.setValue(20)
-        // Optional: animate it
-        this.animateCounterBounce(playerId);
+        
+      this.counters[playerId].blue.setValue(blue_planet_count);
 
         if(card.type == 'planet'){
             console.log("PLANET PLAYED");

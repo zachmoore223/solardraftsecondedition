@@ -42,7 +42,7 @@ class PlayerTurn extends GameState
      *******************/
     #[PossibleAction]
     public function actPlayCard(int $card_id, int $activePlayerId)
-    {   $this->game->blue_planet_count->inc($activePlayerId, 1);
+    {   
 
         // Take card from player's hand
         $card = $this->game->cards->getCard($card_id);
@@ -52,6 +52,26 @@ class PlayerTurn extends GameState
 
         // Enrich before sending
         $card = $this->game->enrichCard($card);
+
+        // Handle card counters
+        if ($card['type'] === 'planet') {
+            if ($card['color'] === 'BLUE') {
+                $this->game->blue_planet_count->inc($activePlayerId, 1);
+            }
+
+            if ($card['color'] === 'GREEN') {
+                $this->game->green_planet_count->inc($activePlayerId, 1);
+            }
+
+             if ($card['color'] === 'RED') {
+                $this->game->red_planet_count->inc($activePlayerId, 1);
+            }
+
+            if ($card['color'] === 'TAN') {
+                $this->game->tan_planet_count->inc($activePlayerId, 1);
+            }
+        }
+
 
         // Notify all players
         $this->notify->all(

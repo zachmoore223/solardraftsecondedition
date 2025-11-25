@@ -27,7 +27,11 @@ class Game extends \Bga\GameFramework\Table
 {
 
     public PlayerCounter $blue_planet_count;
-
+    public PlayerCounter $green_planet_count;
+    public PlayerCounter $red_planet_count;
+    public PlayerCounter $tan_planet_count;
+    public PlayerCounter $comet_count;
+    public PlayerCounter $moon_count;       
     public $cards;
     const LOCATION_DECK = 'deck';
     const LOCATION_DISCARD = 'discardPile';
@@ -176,7 +180,11 @@ class Game extends \Bga\GameFramework\Table
         $this->initGameStateLabels([]); // mandatory, even if the array is empty
 
         $this->blue_planet_count = $this->counterFactory->createPlayerCounter('blue_planet_count');
-
+        $this->green_planet_count = $this->counterFactory->createPlayerCounter('green_planet_count');
+        $this->red_planet_count = $this->counterFactory->createPlayerCounter('red_planet_count');
+        $this->tan_planet_count = $this->counterFactory->createPlayerCounter('tan_planet_count');
+        $this->comet_count = $this->counterFactory->createPlayerCounter('comet_count');
+        $this->moon_count = $this->counterFactory->createPlayerCounter('moon_count');
         $this->cards = $this->deckFactory->createDeck('card');
         $this->cards->init('card');
 
@@ -264,6 +272,11 @@ class Game extends \Bga\GameFramework\Table
             "SELECT `player_id` `id`, `player_score` `score` FROM `player`"
         );
         $this->blue_planet_count->fillResult($result);
+        $this->green_planet_count->fillResult($result);
+        $this->red_planet_count->fillResult($result);
+        $this->tan_planet_count->fillResult($result);
+        $this->comet_count->fillResult($result);
+        $this->moon_count->fillResult($result);
 
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
@@ -317,9 +330,14 @@ class Game extends \Bga\GameFramework\Table
      *  according to the game rules, so that the game is ready to be played.
      */
     protected function setupNewGame($players, $options = [])
-    {
+    {   
+        //put all counters into the DB
         $this->blue_planet_count->initDb(array_keys($players));
-
+        $this->green_planet_count->initDb(array_keys($players));
+        $this->red_planet_count->initDb(array_keys($players));
+        $this->tan_planet_count->initDb(array_keys($players));
+        $this->comet_count->initDb(array_keys($players));
+        $this->moon_count->initDb(array_keys($players));                
         // Set the colors of the players with HTML color code. The default below is red/green/blue/orange/brown. The
         // number of colors defined here must correspond to the maximum number of players allowed for the gams.
         $gameinfos = $this->getGameinfos();
@@ -502,6 +520,7 @@ class Game extends \Bga\GameFramework\Table
         $info = $this->getCardInfo($card);
 
         $card['name'] = $info['name'] ?? null;
+        $card['color'] = $info['color'] ?? null;
         $card['points'] = $info['points'] ?? null;
         $card['ability'] = $info['ability'] ?? null;
         $card['moonUnlock'] = $info['moonUnlock'] ?? null;
