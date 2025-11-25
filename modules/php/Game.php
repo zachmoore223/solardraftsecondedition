@@ -285,7 +285,7 @@ class Game extends \Bga\GameFramework\Table
         // TODO: Gather all information about current game situation (visible by player $current_player_id).
         $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
         $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
-
+        
         $result['tableau'] = [];
         foreach ($result['players'] as $p_id => $player) {           
             $cards = $this->cards->getCardsInLocation('tableau', $p_id);

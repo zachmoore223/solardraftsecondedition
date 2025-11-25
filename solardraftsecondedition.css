@@ -109,23 +109,36 @@
     overflow: hidden; /* prevents spill */  
 }
 
-#mysolarsystem_wrap .card {
-    width: var(--card-width);
-    margin-right: var(--gap);
-
-    transform-origin: top left;
-
-    /* AUTO-SHRINK FORMULA */
-    transform: scale(
-        min(
-            1,
-            calc(
-                100% /
-                (var(--card-width) * var(--num-cards) + var(--gap) * (var(--num-cards) - 1))
-            )
-        )
-    );
+.solar-system {
+    display: flex;
+    flex-direction: row;
+    gap: 6px; /* distance between planets */
+    align-items: center;
+    justify-content: center;
 }
+
+.planet-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* center moon/planet/comet stack */
+    position: relative;
+}
+
+.moon-container {
+    margin-bottom: -40px;
+    z-index: 3;
+}
+
+.planet-container {
+    z-index: 2;
+}
+
+.comet-container {
+    margin-top: -30px;
+    padding-left: 30px; /* comet offset */
+    z-index: 1;
+}
+
 
 #solar-deck .card:hover{
     box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
@@ -151,8 +164,6 @@
     /*transform: translate(0,0) scale(.95); */
     transition: transform 0.25s ease-in-out;
 }
-
-
 
 /* CARD HOVERS */
 #player-hand .card:hover,

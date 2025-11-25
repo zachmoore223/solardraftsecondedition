@@ -334,57 +334,134 @@ define([
         });
       };
 
-      /*******************************
-       *   SOLAR SYSTEMS / TABLEAUS   *
-       *******************************/
-      gameArea.insertAdjacentHTML(
-        "beforeend",
-        '<div id="player-tables"></div>'
-      );
+        /*******************************
+         *     SOLAR SYSTEM SETUP      *
+         *******************************/
 
-      Object.values(gamedatas.players).forEach((player, index) => {
-        document.getElementById("player-tables").insertAdjacentHTML(
-          "beforeend",
-          `
-                    <div class="playertable whiteblock playertable_${player.id}">
-                        <div class="playertablename" style="color:#${player.color};">
-                            <b>Solar System - ${player.name}</b>
-                        </div>
-                        
-                        <div id="tableau_${player.id}">
-                            <div id="moons-tableau_${player.id}"></div>
-                            <div id="planets-tableau_${player.id}"></div>
-                            <div id="planets-tableau_${player.id}"></div>
-                        </div>
-                    </div>
-                    `
-        );
-      });
-      // Local player = the one whose browser is rendering the UI
-      const localPlayerId = this.player_id;
-
-      // Find this player's tableau container
-      const myWrapper = document.querySelector(`.playertable_${localPlayerId}`);
-
-      // Move it into the personal solar system area
-      document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
-      //create LineStocks for each tableau
-      this.tableauStocks = {};
-
-      Object.values(gamedatas.players).forEach((player) => {
-        this.tableauStocks[player.id] = new BgaCards.LineStock(
-          this.cardsManager,
-          document.getElementById(`tableau_${player.id}`)
+        // Create player table container
+        gameArea.insertAdjacentHTML(
+            "beforeend",
+            '<div id="player-tables"></div>'
         );
 
-        // Load tableau cards from server
-        if (gamedatas.tableau[player.id]) {
-          const tableauCards = Object.values(gamedatas.tableau[player.id]);
-          this.tableauStocks[player.id].addCards(tableauCards);
-        }
-      });
+        // ------------------------------
+        // 1. Create player solar system wrappers
+        // ------------------------------
+        Object.values(gamedatas.players).forEach((player) => {
+            document.getElementById("player-tables").insertAdjacentHTML(
+                "beforeend",
+                `
+                <div class="playertable whiteblock playertable_${player.id}">
+                    <div class="player-title">Solar System – ${player.name}</div>
+                    <div class="solar-system" id="solar_${player.id}"></div>
+                </div>
+                `
+            );
+        });
 
-      console.log("TABLEAU GAMEDATAS:", gamedatas.tableau);
+        // Move the LOCAL player's solar system into the top “my” area
+        const localPlayerId = this.player_id;
+        const myWrapper = document.querySelector(`.playertable_${localPlayerId}`);
+        document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
+
+        // ------------------------------
+        // 2. Prepare storage for dynamic planet/moon/comet LineStocks
+        // (stocks created per-card, not per-player)
+        // ------------------------------
+        this.planetStocks = {};  // Stores LineStocks for planets keyed by card.id
+        this.moonStocks = {};    // Stores LineStocks for moons keyed by card.id (planet they belong to)
+        this.cometStocks = {};   // Stores LineStocks for comets keyed by card.id (planet they belong to)
+
+        // ------------------------------
+        // 3. Helper for creating planet slots from gamedatas and notifications
+        // ------------------------------
+        this.createPlanetSlot = (playerId, planetCard) => {
+            const solar = document.getElementById(`solar_${playerId}`);
+
+            // Create a slot for this planet
+            const slot = document.createElement("div");
+            slot.classList.add("planet-slot");
+            slot.dataset.planetId = planetCard.id;  // important for attaching moons/comets
+
+            slot.innerHTML = `
+                <div class="moon-container"></div>
+                <div class="planet-container"></div>
+                <div class="comet-container"></div>
+            `;
+
+            solar.appendChild(slot);
+
+            // Create line stocks bound to this slot
+            this.planetStocks[planetCard.id] = new BgaCards.LineStock(
+                this.cardsManager,
+                slot.querySelector(".planet-container")
+            );
+            this.moonStocks[planetCard.id] = new BgaCards.LineStock(
+                this.cardsManager,
+                slot.querySelector(".moon-container")
+            );
+            this.cometStocks[planetCard.id] = new BgaCards.LineStock(
+                this.cardsManager,
+                slot.querySelector(".comet-container")
+            );
+
+            // Add planet card to its slot
+            this.planetStocks[planetCard.id].addCard(planetCard);
+        };
+
+        // ------------------------------
+        // 4. Rebuild player solar systems from the server's gamedatas
+        // ------------------------------
+        Object.values(gamedatas.players).forEach((player) => {
+            const tableau = gamedatas.tableau[player.id];
+            if (!tableau) return;
+
+            // Sort by id so planets come out in play order
+            const cards = Object.values(tableau).sort((a, b) => a.id - b.id);
+
+            cards.forEach(card => {
+                if (card.type === "planet") {
+                    // Create a new slot for this planet
+                    this.createPlanetSlot(player.id, card);
+                }
+            });
+
+            // Now attach moons + comets AFTER planets exist
+            cards.forEach(card => {
+                if (card.type === "moon") {
+                    this.addMoonToLastPlanet(player.id, card);
+                }
+                if (card.type === "comet") {
+                    this.addCometToLastPlanet(player.id, card);
+                }
+            });
+        });
+
+        // ------------------------------
+        // 5. Helper methods to attach moons/comets dynamically during setup
+        // ------------------------------
+        this.addMoonToLastPlanet = (playerId, moonCard) => {
+            const solar = document.getElementById(`solar_${playerId}`);
+            const slots = solar.querySelectorAll(".planet-slot");
+            if (!slots.length) return;
+
+            const lastSlot = slots[slots.length - 1];
+            const planetId = lastSlot.dataset.planetId;
+
+            this.moonStocks[planetId].addCard(moonCard);
+        };
+
+        this.addCometToLastPlanet = (playerId, cometCard) => {
+            const solar = document.getElementById(`solar_${playerId}`);
+            const slots = solar.querySelectorAll(".planet-slot");
+            if (!slots.length) return;
+
+            const lastSlot = slots[slots.length - 1];
+            const planetId = lastSlot.dataset.planetId;
+
+            this.cometStocks[planetId].addCard(cometCard);
+        };
+
       /*******************************
        *         PLAYER PANELS        *
        *******************************/
@@ -471,7 +548,7 @@ define([
       }
 
       this.setupNotifications();
-console.log("FULL GAMEDATAS:", gamedatas);
+        console.log("FULL GAMEDATAS:", gamedatas);
       console.log("Ending game setup");
     },
 
@@ -574,6 +651,58 @@ console.log("FULL GAMEDATAS:", gamedatas);
       );
     },
 
+    createPlanetSlot(playerId, card) {
+    const solar = document.getElementById(`solar_${playerId}`);
+
+    const slot = document.createElement("div");
+    slot.classList.add("planet-slot");
+
+        slot.innerHTML = `
+            <div class="moon-container"></div>
+            <div class="planet-container"></div>
+            <div class="comet-container"></div>
+        `;
+
+        solar.appendChild(slot);
+
+        this.planetStocks[card.id] = new BgaCards.LineStock(
+            this.cardsManager,
+            slot.querySelector(".planet-container")
+        );
+
+        this.planetStocks[card.id].addCard(card);
+    },
+
+    addMoonToLastPlanet(playerId, moonCard) {
+    const solar = document.getElementById(`solar_${playerId}`);
+    const slots = solar.querySelectorAll(".planet-slot");
+
+    const lastSlot = slots[slots.length - 1]; // attach to last played planet
+
+    const moonStock = new BgaCards.LineStock(
+        this.cardsManager,
+        lastSlot.querySelector(".moon-container")
+    );
+
+    moonStock.addCard(moonCard);
+},
+
+addCometToLastPlanet(playerId, cometCard) {
+    const solar = document.getElementById(`solar_${playerId}`);
+    const slots = solar.querySelectorAll(".planet-slot");
+
+    const lastSlot = slots[slots.length - 1]; // comets always attach to latest
+
+    const cometStock = new BgaCards.LineStock(
+        this.cardsManager,
+        lastSlot.querySelector(".comet-container")
+    );
+
+    cometStock.addCard(cometCard);
+},
+
+
+
     ///////////////////////////////////////////////////
     //// Player's action
     //change this to directly occur from the onClick
@@ -609,8 +738,14 @@ console.log("FULL GAMEDATAS:", gamedatas);
       const newValue = notif.newValue;
       const counter = notif.counter;
       const newRingCount = notif.newRingCount;
+       // Remove from hand if it's the current player's card
+      if (playerId == this.player_id) {
+        await this.handStock.removeCard(card);
+      }
 
-      if (card.type == "planet") {
+    //add card to appropriate spot and tick its corresponding counters  
+    if (card.type == "planet") {
+        this.createPlanetSlot(playerId, card);
         if (counter == "blue"){
             this.counters[playerId].blue.setValue(newValue);
         }
@@ -623,28 +758,24 @@ console.log("FULL GAMEDATAS:", gamedatas);
         if (counter == "tan"){
             this.counters[playerId].tan.setValue(newValue);
         }
-      }
+        if(newRingCount > 0){
+            this.counters[playerId].ring.setValue(newRingCount);
+        }
+      
+    }
 
-      if(newRingCount > 0){
-        this.counters[playerId].ring.setValue(newRingCount);
-      }
-
-      if (card.type == "comet") {
+    if (card.type == "comet") {
         this.counters[playerId].comet.setValue(newValue);
-      }
-
+        this.addCometToLastPlanet(playerId, card);
+    }
+    
       if (card.type == "moon") {
         this.counters[playerId].moon.setValue(newValue);
-      }
-      // Remove from hand if it's the current player's card
-      if (playerId == this.player_id) {
-        await this.handStock.removeCard(card);
+        this.addMoonToLastPlanet(playerId, card);
       }
 
-      // Add to the player's tableau
-      if (this.tableauStocks[playerId]) {
-        await this.tableauStocks[playerId].addCard(card);
-      }
+
+
     },
 
     /**
