@@ -53,6 +53,91 @@ class PlayerTurn extends GameState
 
         // Enrich before sending
         $card = $this->game->enrichCard($card);
+
+
+        //---------------------------------------
+        // Determine parent planet / slot (REAL BGA VERSION FOR STATE CLASS)
+        //---------------------------------------
+        $parent_id = null;
+        $parent_slot = null;
+
+        // Planets never have parents
+        if ($card['type'] === 'planet') {
+            $parent_id = null;
+            $parent_slot = null;
+        }
+
+        // MOONS attach to most recent planet
+        if ($card['type'] === 'moon') {
+
+            // 1. Find the latest planet for this player
+            $latestPlanet = $this->game->getObjectFromDB("
+                SELECT card_id
+                FROM `card`
+                WHERE card_location = 'tableau'
+                AND card_location_arg = $activePlayerId
+                AND card_type = 'planet'
+                ORDER BY card_id DESC
+                LIMIT 1
+            ");
+
+            if ($latestPlanet) {
+                $parent_id = (int)$latestPlanet['card_id'];
+
+                // 2. Count moons already attached
+                $parent_slot = (int) $this->game->getUniqueValueFromDB("
+                    SELECT COUNT(*)
+                    FROM `card`
+                    WHERE parent_id = $parent_id
+                    AND card_type = 'moon'
+                ");
+            }
+        }
+
+        // COMETS attach to the most recent planet
+        if ($card['type'] === 'comet') {
+
+            // 1. Find latest planet
+            $latestPlanet = $this->game->getObjectFromDB("
+                SELECT card_id
+                FROM `card`
+                WHERE card_location = 'tableau'
+                AND card_location_arg = $activePlayerId
+                AND card_type = 'planet'
+                ORDER BY card_id DESC
+                LIMIT 1
+            ");
+
+            if ($latestPlanet) {
+                $parent_id = (int)$latestPlanet['card_id'];
+
+                // 2. Count comets already attached
+                $parent_slot = (int) $this->game->getUniqueValueFromDB("
+                    SELECT COUNT(*)
+                    FROM `card`
+                    WHERE parent_id = $parent_id
+                    AND card_type = 'comet'
+                ");
+            }
+        }
+
+        //---------------------------------------
+        // Save parent info into DB
+        //---------------------------------------
+        $parentIdSql   = ($parent_id === null)   ? "NULL" : $parent_id;
+        $parentSlotSql = ($parent_slot === null) ? "NULL" : $parent_slot;
+
+        $this->game->DbQuery("
+            UPDATE `card`
+            SET parent_id = $parentIdSql,
+                parent_slot = $parentSlotSql
+            WHERE card_id = " . (int)$card['id']
+        );
+
+        // Add them to the card being sent to UI
+        $card['parent_id'] = $parent_id;
+        $card['parent_slot'] = $parent_slot;
+
         $cardColor = $card['color'];
         $cardRings = $card['rings'];
         

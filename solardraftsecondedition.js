@@ -332,133 +332,119 @@ define([
         });
       };
 
-        /*******************************
-         *     SOLAR SYSTEM SETUP      *
-         *******************************/
+      /*******************************
+       *     SOLAR SYSTEM SETUP      
+       *******************************/
 
-        // Create player table container
-        gameArea.insertAdjacentHTML(
-            "beforeend",
-            '<div id="player-tables"></div>'
-        );
+      // Create player table container
+      gameArea.insertAdjacentHTML(
+          "beforeend",
+          '<div id="player-tables"></div>'
+      );
 
-        // ------------------------------
-        // 1. Create player solar system wrappers
-        // ------------------------------
-        Object.values(gamedatas.players).forEach((player) => {
-            document.getElementById("player-tables").insertAdjacentHTML(
-                "beforeend",
-                `
-                <div class="playertable whiteblock playertable_${player.id}">
-                    <div class="player-title">Solar System – ${player.name}</div>
-                    <div class="solar-system" id="solar_${player.id}"></div>
-                </div>
-                `
-            );
-        });
+      // --------------------------------------
+      // 1. Create each player's solar-system wrapper
+      // --------------------------------------
+      Object.values(gamedatas.players).forEach((player) => {
+          document.getElementById("player-tables").insertAdjacentHTML(
+              "beforeend",
+              `
+              <div class="playertable whiteblock playertable_${player.id}">
+                  <div class="player-title">Solar System – ${player.name}</div>
+                  <div class="solar-system" id="solar_${player.id}"></div>
+              </div>
+              `
+          );
+      });
 
-        // Move the LOCAL player's solar system into the top “my” area
-        const localPlayerId = this.player_id;
-        const myWrapper = document.querySelector(`.playertable_${localPlayerId}`);
-        document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
+      // Move LOCAL player's system into personal view
+      const localPlayerId = this.player_id;
+      const myWrapper = document.querySelector(`.playertable_${localPlayerId}`);
+      document.getElementById("mysolarsystem_wrap").appendChild(myWrapper);
 
-        // ------------------------------
-        // 2. Prepare storage for dynamic planet/moon/comet LineStocks
-        // (stocks created per-card, not per-player)
-        // ------------------------------
-        this.planetStocks = {};  // Stores LineStocks for planets keyed by card.id
-        this.moonStocks = {};    // Stores LineStocks for moons keyed by card.id (planet they belong to)
-        this.cometStocks = {};   // Stores LineStocks for comets keyed by card.id (planet they belong to)
+      // --------------------------------------
+      // 2. STOCK STORAGE (keyed by planetId)
+      // --------------------------------------
+      this.planetStocks = {};   // planetId → LineStock
+      this.moonStocks   = {};   // planetId → LineStock
+      this.cometStocks  = {};   // planetId → LineStock
 
-        // ------------------------------
-        // 3. Helper for creating planet slots from gamedatas and notifications
-        // ------------------------------
-        this.createPlanetSlot = (playerId, planetCard) => {
-            const solar = document.getElementById(`solar_${playerId}`);
+      // --------------------------------------
+      // 3. Create a planet slot
+      // --------------------------------------
+      this.createPlanetSlot = (playerId, planetCard) => {
+          const solar = document.getElementById(`solar_${playerId}`);
 
-            // Create a slot for this planet
-            const slot = document.createElement("div");
-            slot.classList.add("planet-slot");
-            slot.dataset.planetId = planetCard.id;  // important for attaching moons/comets
+          const slot = document.createElement("div");
+          slot.classList.add("planet-slot");
+          slot.dataset.planetId = planetCard.id;
 
-            slot.innerHTML = `
-                <div class="moon-container"></div>
-                <div class="planet-container"></div>
-                <div class="comet-container"></div>
-            `;
+          slot.innerHTML = `
+              <div class="moon-container"></div>
+              <div class="planet-container"></div>
+              <div class="comet-container"></div>
+          `;
 
-            solar.appendChild(slot);
+          solar.appendChild(slot);
 
-            // Create line stocks bound to this slot
-            this.planetStocks[planetCard.id] = new BgaCards.LineStock(
-                this.cardsManager,
-                slot.querySelector(".planet-container")
-            );
-            this.moonStocks[planetCard.id] = new BgaCards.LineStock(
-                this.cardsManager,
-                slot.querySelector(".moon-container")
-            );
-            this.cometStocks[planetCard.id] = new BgaCards.LineStock(
-                this.cardsManager,
-                slot.querySelector(".comet-container")
-            );
+          // Bind LineStocks to containers
+          this.planetStocks[planetCard.id] = new BgaCards.LineStock(
+              this.cardsManager,
+              slot.querySelector(".planet-container")
+          );
 
-            // Add planet card to its slot
-            this.planetStocks[planetCard.id].addCard(planetCard);
-        };
+          this.moonStocks[planetCard.id] = new BgaCards.LineStock(
+              this.cardsManager,
+              slot.querySelector(".moon-container")
+          );
 
-        // ------------------------------
-        // 4. Rebuild player solar systems from the server's gamedatas
-        // ------------------------------
-        Object.values(gamedatas.players).forEach((player) => {
-            const tableau = gamedatas.tableau[player.id];
-            if (!tableau) return;
+          this.cometStocks[planetCard.id] = new BgaCards.LineStock(
+              this.cardsManager,
+              slot.querySelector(".comet-container")
+          );
 
-            // Sort by id so planets come out in play order
-            const cards = Object.values(tableau).sort((a, b) => a.id - b.id);
+          // Add the planet card
+          this.planetStocks[planetCard.id].addCard(planetCard);
+      };
 
-            cards.forEach(card => {
-                if (card.type === "planet") {
-                    // Create a new slot for this planet
-                    this.createPlanetSlot(player.id, card);
-                }
-            });
+      // --------------------------------------
+      // 4. Build all solar systems from gamedatas (REFRESH SAFE!)
+      // --------------------------------------
+      Object.values(gamedatas.players).forEach((player) => {
+          const tableau = gamedatas.tableau[player.id];
+          if (!tableau) return;
 
-            // Now attach moons + comets AFTER planets exist
-            cards.forEach(card => {
-                if (card.type === "moon") {
-                    this.addMoonToLastPlanet(player.id, card);
-                }
-                if (card.type === "comet") {
-                    this.addCometToLastPlanet(player.id, card);
-                }
-            });
-        });
+          const cards = Object.values(tableau).sort((a, b) => a.id - b.id);
 
-        // ------------------------------
-        // 5. Helper methods to attach moons/comets dynamically during setup
-        // ------------------------------
-        this.addMoonToLastPlanet = (playerId, moonCard) => {
-            const solar = document.getElementById(`solar_${playerId}`);
-            const slots = solar.querySelectorAll(".planet-slot");
-            if (!slots.length) return;
+          // First pass: create all planet slots
+          cards.forEach(card => {
+              if (card.type === "planet") {
+                  this.createPlanetSlot(player.id, card);
+              }
+          });
 
-            const lastSlot = slots[slots.length - 1];
-            const planetId = lastSlot.dataset.planetId;
+          // Second pass: attach moons & comets to their saved parent
+          cards.forEach(card => {
+              if (card.type === "moon") {
+                  const parentId = card.parent_id;
+                  const slotIndex = card.parent_slot ?? undefined;
 
-            this.moonStocks[planetId].addCard(moonCard);
-        };
+                  this.moonStocks[parentId].addCard(card, {
+                      index: slotIndex
+                  });
+              }
 
-        this.addCometToLastPlanet = (playerId, cometCard) => {
-            const solar = document.getElementById(`solar_${playerId}`);
-            const slots = solar.querySelectorAll(".planet-slot");
-            if (!slots.length) return;
+              if (card.type === "comet") {
+                  const parentId = card.parent_id;
+                  const slotIndex = card.parent_slot ?? undefined;
 
-            const lastSlot = slots[slots.length - 1];
-            const planetId = lastSlot.dataset.planetId;
+                  this.cometStocks[parentId].addCard(card, {
+                      index: slotIndex
+                  });
+              }
+          });
+      });
 
-            this.cometStocks[planetId].addCard(cometCard);
-        };
 
       /*******************************
        *         PLAYER PANELS        *
@@ -741,9 +727,25 @@ addCometToLastPlanet(playerId, cometCard) {
         await this.handStock.removeCard(card);
       }
 
+
+
+      if (card.type === "planet") {
+          this.createPlanetSlot(playerId, card);
+      }
+
+      if (card.type === "moon") {
+          const parent = card.parent_id;
+          this.moonStocks[parent].addCard(card, { index: card.parent_slot });
+      }
+
+      if (card.type === "comet") {
+          const parent = card.parent_id;
+          this.cometStocks[parent].addCard(card, { index: card.parent_slot });
+      }
+
+
     //add card to appropriate spot and tick its corresponding counters  
     if (card.type == "planet") {
-        this.createPlanetSlot(playerId, card);
         if (counter == "blue"){
             this.counters[playerId].blue.setValue(newValue);
         }
@@ -764,12 +766,10 @@ addCometToLastPlanet(playerId, cometCard) {
 
     if (card.type == "comet") {
         this.counters[playerId].comet.setValue(newValue);
-        this.addCometToLastPlanet(playerId, card);
     }
     
       if (card.type == "moon") {
         this.counters[playerId].moon.setValue(newValue);
-        this.addMoonToLastPlanet(playerId, card);
       }
 
 

@@ -261,72 +261,113 @@ class Game extends \Bga\GameFramework\Table
      * - when the game starts
      * - when a player refreshes the game page (F5)
      */
-    protected function getAllDatas(): array
-    {
-        $result = [];
+        protected function getAllDatas(): array
+        {
+            $result = [];
 
-        // WARNING: We must only return information visible by the current player.
-        $current_player_id = (int) $this->getCurrentPlayerId();
+            $current_player_id = (int) $this->getCurrentPlayerId();
 
-        // Get information about players.
-        // NOTE: you can retrieve some extra field you added for "player" table in `dbmodel.sql` if you need it.
-        $result["players"] = $this->getCollectionFromDb(
-            "SELECT `player_id` `id`, `player_score` `score` FROM `player`"
-        );
-        
-        $this->blue_planet_count->fillResult($result);
-        $this->green_planet_count->fillResult($result);
-        $this->red_planet_count->fillResult($result);
-        $this->tan_planet_count->fillResult($result);
-        $this->comet_count->fillResult($result);
-        $this->moon_count->fillResult($result);
-        $this->ring_count->fillResult($result);
+            // ----------------------
+            // PLAYERS
+            // ----------------------
+            $result["players"] = $this->getCollectionFromDb(
+                "SELECT `player_id` `id`, `player_score` `score` FROM `player`"
+            );
 
-        // TODO: Gather all information about current game situation (visible by player $current_player_id).
-        $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
-        $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
-        
-        $result['tableau'] = [];
-        foreach ($result['players'] as $p_id => $player) {           
-            $cards = $this->cards->getCardsInLocation('tableau', $p_id);
-            $result['tableau'][$p_id] = $this->enrichCards($cards);
+            $this->blue_planet_count->fillResult($result);
+            $this->green_planet_count->fillResult($result);
+            $this->red_planet_count->fillResult($result);
+            $this->tan_planet_count->fillResult($result);
+            $this->comet_count->fillResult($result);
+            $this->moon_count->fillResult($result);
+            $this->ring_count->fillResult($result);
+
+            // ----------------------
+            // TABLEAU (planet / moon / comet)
+            // ----------------------
+            $result['tableau'] = [];
+            foreach ($result['players'] as $p_id => $player) {
+
+                $cards = $this->getCollectionFromDb(
+                    "SELECT
+                        card_id AS id,
+                        card_type AS type,
+                        card_type_arg AS type_arg,
+                        card_location AS location,
+                        card_location_arg AS location_arg,
+                        parent_id,
+                        parent_slot
+                    FROM card
+                    WHERE card_location = 'tableau'
+                    AND card_location_arg = $p_id
+                    ORDER BY card_id ASC"
+                );
+
+
+                // Add parent info + enrich sprite info
+                $cards = array_map(function ($c) {
+                    return [
+                        'id'            => (int)$c['id'],
+                        'type'          => $c['type'],
+                        'type_arg'      => (int)$c['type_arg'],
+                        'location'      => $c['location'],
+                        'location_arg'  => (int)$c['location_arg'],
+                        'parent_id'     => $c['parent_id'] ? (int)$c['parent_id'] : null,
+                        'parent_slot'   => $c['parent_slot'] ? (int)$c['parent_slot'] : null,
+                    ];
+                }, $cards);
+
+                $result['tableau'][$p_id] = $this->enrichCards($cards);
+            }
+
+            // ----------------------
+            // HAND COUNTS
+            // ----------------------
+            $result['cardsInHand'] = [];
+            foreach ($result['players'] as $p_id => $player) {
+                $result['cardsInHand'][$p_id] =
+                    $this->cards->countCardsInLocation('hand', $p_id);
+            }
+
+            // ----------------------
+            // DECK / DISCARD
+            // ----------------------
+            $discardPile = $this->cards->getCardsInLocation(self::LOCATION_DISCARD);
+            $top = $this->cards->getCardOnTop(self::LOCATION_DECK);
+
+            $result['cardsInDiscard'] = $this->cards->countCardsInLocation(self::LOCATION_DISCARD);
+            $result['cardsRemaining'] = $this->cards->countCardsInLocation('deck');
+            $result['deckTop'] = $top ? $this->enrichCard($top) : null;
+            $result['hand'] = $this->enrichCards(
+                $this->cards->getCardsInLocation('hand', $current_player_id)
+            );
+            $result['discardPile'] = $this->enrichCards($discardPile);
+
+            // ----------------------
+            // SOLAR ROWS
+            // ----------------------
+            $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
+            $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
+
+            $solarRow1Slots = [null, null, null];
+            $solarRow2Slots = [null, null, null];
+
+            foreach ($solarRow1 as $card) {
+                $slot = intval($card['location_arg']);
+                $solarRow1Slots[$slot] = $this->enrichCard($card);
+            }
+
+            foreach ($solarRow2 as $card) {
+                $slot = intval($card['location_arg']);
+                $solarRow2Slots[$slot] = $this->enrichCard($card);
+            }
+
+            $result['solarRow1'] = $solarRow1Slots;
+            $result['solarRow2'] = $solarRow2Slots;
+
+            return $result;
         }
 
-        $result['cardsInHand'] = [];
-        foreach ($result['players'] as $p_id => $player) {
-            $result['cardsInHand'][$p_id] = 
-                $this->cards->countCardsInLocation('hand', $p_id);
-        }
-
-        $result['cardsInDiscard'] = $this->cards->countCardsInLocation(self::LOCATION_DISCARD);
-        $result['cardsRemaining'] = $this->cards->countCardsInLocation('deck');
-        $result['deckTop'] = $top ? $this->enrichCard($top) : null;
-        $result['hand'] = $this->cards->getCardsInLocation('hand', $current_player_id);
-        $result['discardPile'] = $this->enrichCards($discardPile);
-
-        $solarRow1 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW1);
-        $solarRow2 = $this->cards->getCardsInLocation(self::LOCATION_SOLARROW2);
-
-        // Convert to slot-indexed arrays
-        $solarRow1Slots = [null, null, null];
-        $solarRow2Slots = [null, null, null];
-
-        foreach ($solarRow1 as $card) {
-            $slot = intval($card['location_arg']);
-            $solarRow1Slots[$slot] = $this->enrichCard($card);
-        }
-
-        foreach ($solarRow2 as $card) {
-            $slot = intval($card['location_arg']);
-            $solarRow2Slots[$slot] = $this->enrichCard($card);
-        }
-
-        $result['solarRow1'] = $solarRow1Slots;
-        $result['solarRow2'] = $solarRow2Slots;
-
-
-        return $result;
-    }
 
     /**
      * This method is called only once, when a new game is launched. In this method, you must setup the game
