@@ -101,13 +101,6 @@
     margin-top: 20px;
 }
 
-#mysolarsystem_wrap{
-    display: flex;
-    flex-wrap: nowrap; /* keep cards on one row */
-    align-items: center;
-    justify-content: flex-start; /* left alignment */
-    overflow: hidden; /* prevents spill */  
-}
 /**************************************
  * SOLAR SYSTEM — Horizontal row of slots
  **************************************/
@@ -115,8 +108,13 @@
     display: flex;
     flex-direction: row;
     justify-content: flex-start;
-    gap: 25px;
-    padding: 30px 0;
+    gap: 10px;
+    padding: 0px 10px 0px 10px;
+}
+
+.solar-system  .card {
+    transform: scale(1.00);
+    transform-origin: center center;
 }
 
 /**************************************
@@ -127,7 +125,7 @@
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
-    width: 150px;
+    width: 100px;
     gap: 0px;
 }
 
@@ -145,7 +143,7 @@
 }
 
 .moon-container .card {
-    transform: scale(0.50);
+    transform: scale(0.65);
     transform-origin: bottom center;
 }
 
@@ -156,6 +154,7 @@
     align-items: flex-end;
     gap: 5px;
     height: 100%;
+    z-index: 1;
 }
 
 /**************************************
@@ -171,7 +170,7 @@
 }
 
 .planet-container .card {
-    transform: scale(0.75);
+    transform: scale(0.65);
     transform-origin: center center;
 }
 
@@ -181,6 +180,7 @@
     justify-content: center;
     align-items: center;
     height: 100%;
+    z-index: 2;
 }
 
 /**************************************
@@ -194,10 +194,11 @@
     min-height: 85px;  /* Reserve space even when empty */
     height: 85px;      /* Fixed height */
     width: 100%;
+    z-index: 0;
 }
 
 .comet-container .card {
-    transform: scale(0.60);
+    transform: scale(0.65);
     transform-origin: top center;
 }
 
@@ -209,13 +210,6 @@
     gap: 5px;
     height: 100%;
 }
-
-
-
-
-
-
-
 
 #solar-deck .card:hover{
     box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);

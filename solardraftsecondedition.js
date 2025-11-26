@@ -100,9 +100,7 @@ define([
             <div id="solar-grid">
 
                 <!-- Row 1, Col 1 -->
-                <div id="mysolarsystem_wrap">
-                    <div id="mysolarsystem"></div>
-                </div>
+                <div id="mysolarsystem_wrap"></div>
 
                 <!-- Row 1, Col 2 -->
                 <div id="solar-deck_wrap" class="whiteblock">
