@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS `card` (
   `card_location_arg` int(11) NOT NULL,
   `parent_id` int(10) unsigned DEFAULT NULL,
   `parent_slot` int(10) unsigned DEFAULT NULL,
+  `planet_order` int(10) unsigned DEFAULT NULL,
   PRIMARY KEY (`card_id`)
-
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
 -- Example 2: add a custom field to the standard "player" table

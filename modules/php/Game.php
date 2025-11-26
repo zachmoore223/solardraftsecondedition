@@ -32,7 +32,8 @@ class Game extends \Bga\GameFramework\Table
     public PlayerCounter $tan_planet_count;
     public PlayerCounter $comet_count;
     public PlayerCounter $moon_count;
-    public PlayerCounter $ring_count;        
+    public PlayerCounter $ring_count;
+    public $planetOrder = [];      
     public $cards;
     const LOCATION_DECK = 'deck';
     const LOCATION_DISCARD = 'discardPile';
@@ -296,7 +297,8 @@ class Game extends \Bga\GameFramework\Table
                         card_location AS location,
                         card_location_arg AS location_arg,
                         parent_id,
-                        parent_slot
+                        parent_slot,
+                        planet_order
                     FROM card
                     WHERE card_location = 'tableau'
                     AND card_location_arg = $p_id
@@ -314,12 +316,13 @@ class Game extends \Bga\GameFramework\Table
                         'location_arg'  => (int)$c['location_arg'],
                         'parent_id'     => $c['parent_id'] ? (int)$c['parent_id'] : null,
                         'parent_slot'   => $c['parent_slot'] ? (int)$c['parent_slot'] : null,
+                        'planet_order'   => $c['planet_order'] ? (int)$c['planet_order'] : null,
                     ];
                 }, $cards);
 
                 $result['tableau'][$p_id] = $this->enrichCards($cards);
             }
-
+            
             // ----------------------
             // HAND COUNTS
             // ----------------------

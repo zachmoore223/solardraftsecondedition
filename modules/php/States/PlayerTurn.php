@@ -54,6 +54,27 @@ class PlayerTurn extends GameState
         // Enrich before sending
         $card = $this->game->enrichCard($card);
 
+        // Get all planets currently in tableau (before adding this card)
+        $planet_order = array_values(
+            array_filter(
+                $this->game->cards->getCardsInLocation('tableau', $activePlayerId),
+                fn($c) => $c['type'] === 'planet'
+            )
+        );
+
+        // This card is being added now.
+        // So the index for THIS planet = count before adding it.
+        $planet_index = count($planet_order);
+
+        // Save this index on the new planet (planets only)
+        if ($card['type'] === 'planet') {
+            $this->game->DbQuery("
+                UPDATE `card`
+                SET planet_order = $planet_index
+                WHERE card_id = " . (int) $card['id']
+            );
+            $card['planet_order'] = $planet_index;
+        }
 
         //---------------------------------------
         // Determine parent planet / slot (REAL BGA VERSION FOR STATE CLASS)
@@ -77,7 +98,7 @@ class PlayerTurn extends GameState
                 WHERE card_location = 'tableau'
                 AND card_location_arg = $activePlayerId
                 AND card_type = 'planet'
-                ORDER BY card_id DESC
+                ORDER BY planet_order DESC
                 LIMIT 1
             ");
 
@@ -104,7 +125,7 @@ class PlayerTurn extends GameState
                 WHERE card_location = 'tableau'
                 AND card_location_arg = $activePlayerId
                 AND card_type = 'planet'
-                ORDER BY card_id DESC
+                ORDER BY planet_order DESC
                 LIMIT 1
             ");
 
@@ -137,7 +158,8 @@ class PlayerTurn extends GameState
         // Add them to the card being sent to UI
         $card['parent_id'] = $parent_id;
         $card['parent_slot'] = $parent_slot;
-
+        $card['planet_order'] = $planet_order;
+        
         $cardColor = $card['color'];
         $cardRings = $card['rings'];
         
@@ -202,6 +224,7 @@ class PlayerTurn extends GameState
                 'newValue' => $newValue,
                 'counter'   => $counter,
                 'newRingCount'   => $newRingCount,
+                'planet_order' => $planet_order
             ]
         );
 
