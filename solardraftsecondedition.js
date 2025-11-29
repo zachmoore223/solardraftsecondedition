@@ -172,7 +172,7 @@ define([
       });
 
       this.handStock.onCardClick = (card) => {
-          this.playCard(this.player_id, card);
+        this.playCard(this.player_id, card);
       };
 
       this.handStock.addCards(Array.from(Object.values(this.gamedatas.hand)));
@@ -333,28 +333,28 @@ define([
       };
 
       /*******************************
-       *     SOLAR SYSTEM SETUP      
+       *     SOLAR SYSTEM SETUP
        *******************************/
 
       // Create player table container
       gameArea.insertAdjacentHTML(
-          "beforeend",
-          '<div id="player-tables"></div>'
+        "beforeend",
+        '<div id="player-tables"></div>'
       );
 
       // --------------------------------------
       // 1. Create each player's solar-system wrapper
       // --------------------------------------
       Object.values(gamedatas.players).forEach((player) => {
-          document.getElementById("player-tables").insertAdjacentHTML(
-              "beforeend",
-              `
+        document.getElementById("player-tables").insertAdjacentHTML(
+          "beforeend",
+          `
               <div class="playertable whiteblock playertable_${player.id}">
                   <div class="player-title">Solar System – ${player.name}</div>
                   <div class="solar-system" id="solar_${player.id}"></div>
               </div>
               `
-          );
+        );
       });
 
       // Move LOCAL player's system into personal view
@@ -365,86 +365,85 @@ define([
       // --------------------------------------
       // 2. STOCK STORAGE (keyed by planetId)
       // --------------------------------------
-      this.planetStocks = {};   // planetId → LineStock
-      this.moonStocks   = {};   // planetId → LineStock
-      this.cometStocks  = {};   // planetId → LineStock
+      this.planetStocks = {}; // planetId → LineStock
+      this.moonStocks = {}; // planetId → LineStock
+      this.cometStocks = {}; // planetId → LineStock
 
       // --------------------------------------
       // 3. Create a planet slot
       // --------------------------------------
       this.createPlanetSlot = (playerId, planetCard) => {
-          const solar = document.getElementById(`solar_${playerId}`);
+        const solar = document.getElementById(`solar_${playerId}`);
 
-          const slot = document.createElement("div");
-          slot.classList.add("planet-slot");
-          slot.dataset.planetId = planetCard.id;
+        const slot = document.createElement("div");
+        slot.classList.add("planet-slot");
+        slot.dataset.planetId = planetCard.id;
 
-          slot.innerHTML = `
+        slot.innerHTML = `
               <div class="moon-container"></div>
               <div class="planet-container"></div>
               <div class="comet-container"></div>
           `;
 
-          solar.appendChild(slot);
+        solar.appendChild(slot);
 
-          // Bind LineStocks to containers
-          this.planetStocks[planetCard.id] = new BgaCards.LineStock(
-              this.cardsManager,
-              slot.querySelector(".planet-container")
-          );
+        // Bind LineStocks to containers
+        this.planetStocks[planetCard.id] = new BgaCards.LineStock(
+          this.cardsManager,
+          slot.querySelector(".planet-container")
+        );
 
-          this.moonStocks[planetCard.id] = new BgaCards.LineStock(
-              this.cardsManager,
-              slot.querySelector(".moon-container")
-          );
+        this.moonStocks[planetCard.id] = new BgaCards.LineStock(
+          this.cardsManager,
+          slot.querySelector(".moon-container")
+        );
 
-          this.cometStocks[planetCard.id] = new BgaCards.LineStock(
-              this.cardsManager,
-              slot.querySelector(".comet-container")
-          );
+        this.cometStocks[planetCard.id] = new BgaCards.LineStock(
+          this.cardsManager,
+          slot.querySelector(".comet-container")
+        );
 
-          // Add the planet card
-          this.planetStocks[planetCard.id].addCard(planetCard);
+        // Add the planet card
+        this.planetStocks[planetCard.id].addCard(planetCard);
       };
 
       // --------------------------------------
       // 4. Build all solar systems from gamedatas (REFRESH SAFE!)
       // --------------------------------------
       Object.values(gamedatas.players).forEach((player) => {
-          const tableau = gamedatas.tableau[player.id];
-          if (!tableau) return;
+        const tableau = gamedatas.tableau[player.id];
+        if (!tableau) return;
 
-          const cards = Object.values(tableau).sort((a, b) => a.id - b.id);
+        const cards = Object.values(tableau).sort((a, b) => a.id - b.id);
 
-          // First pass: create all planet slots
-          cards.forEach(card => {
-              if (card.type === "planet") {
-                  this.createPlanetSlot(player.id, card);
-              }
-          });
+        // First pass: create all planet slots
+        cards.forEach((card) => {
+          if (card.type === "planet") {
+            this.createPlanetSlot(player.id, card);
+          }
+        });
 
-          // Second pass: attach moons & comets to their saved parent
-          cards.forEach(card => {
-              if (card.type === "moon") {
-                  const parentId = card.parent_id;
-                  const slotIndex = card.parent_slot ?? undefined;
+        // Second pass: attach moons & comets to their saved parent
+        cards.forEach((card) => {
+          if (card.type === "moon") {
+            const parentId = card.parent_id;
+            const slotIndex = card.parent_slot ?? undefined;
 
-                  this.moonStocks[parentId].addCard(card, {
-                      index: slotIndex
-                  });
-              }
+            this.moonStocks[parentId].addCard(card, {
+              index: slotIndex,
+            });
+          }
 
-              if (card.type === "comet") {
-                  const parentId = card.parent_id;
-                  const slotIndex = card.parent_slot ?? undefined;
+          if (card.type === "comet") {
+            const parentId = card.parent_id;
+            const slotIndex = card.parent_slot ?? undefined;
 
-                  this.cometStocks[parentId].addCard(card, {
-                      index: slotIndex
-                  });
-              }
-          });
+            this.cometStocks[parentId].addCard(card, {
+              index: slotIndex,
+            });
+          }
+        });
       });
-
 
       /*******************************
        *         PLAYER PANELS        *
@@ -513,14 +512,46 @@ define([
         //
         this.counters[playerId] = {};
         const counterList = [
-                { name: "blue",  id: `blue-planet-counter-${playerId}`,  default:  gamedatas.players[playerId].blue_planet_count ?? 0 },
-                { name: "green", id: `green-planet-counter-${playerId}`, default:  gamedatas.players[playerId].green_planet_count ?? 0},
-                { name: "red",   id: `red-planet-counter-${playerId}`,   default:  gamedatas.players[playerId].red_planet_count ?? 0 },
-                { name: "tan",   id: `tan-planet-counter-${playerId}`,   default:  gamedatas.players[playerId].tan_planet_count ?? 0 },
-                { name: "comet", id: `comet-counter-${playerId}`,        default:  gamedatas.players[playerId].comet_count ?? 0 },
-                { name: "moon",  id: `moon-counter-${playerId}`,         default:  gamedatas.players[playerId].moon_count ?? 0 },
-                { name: "ring",  id: `ring-counter-${playerId}`,         default:  gamedatas.players[playerId].ring_count ?? 0 },
-                { name: "hand",  id: `hand-counter-${playerId}`,         default:  gamedatas.cardsInHand[playerId] ?? 0  },
+          {
+            name: "blue",
+            id: `blue-planet-counter-${playerId}`,
+            default: gamedatas.players[playerId].blue_planet_count ?? 0,
+          },
+          {
+            name: "green",
+            id: `green-planet-counter-${playerId}`,
+            default: gamedatas.players[playerId].green_planet_count ?? 0,
+          },
+          {
+            name: "red",
+            id: `red-planet-counter-${playerId}`,
+            default: gamedatas.players[playerId].red_planet_count ?? 0,
+          },
+          {
+            name: "tan",
+            id: `tan-planet-counter-${playerId}`,
+            default: gamedatas.players[playerId].tan_planet_count ?? 0,
+          },
+          {
+            name: "comet",
+            id: `comet-counter-${playerId}`,
+            default: gamedatas.players[playerId].comet_count ?? 0,
+          },
+          {
+            name: "moon",
+            id: `moon-counter-${playerId}`,
+            default: gamedatas.players[playerId].moon_count ?? 0,
+          },
+          {
+            name: "ring",
+            id: `ring-counter-${playerId}`,
+            default: gamedatas.players[playerId].ring_count ?? 0,
+          },
+          {
+            name: "hand",
+            id: `hand-counter-${playerId}`,
+            default: gamedatas.cardsInHand[playerId] ?? 0,
+          },
         ];
 
         for (let entry of counterList) {
@@ -532,7 +563,7 @@ define([
       }
 
       this.setupNotifications();
-        console.log("FULL GAMEDATAS:", gamedatas);
+      console.log("FULL GAMEDATAS:", gamedatas);
       console.log("Ending game setup");
     },
 
@@ -616,28 +647,30 @@ define([
             script.
         
         */
-    playCard(playerId, card)  {      
-    
+    playCard(playerId, card) {
       if (!this.isCurrentPlayerActive()) {
         this.showMessage(_("It is not your turn"), "error");
         return;
-    }
+      }
 
-        const blue  = this.counters[playerId].blue.getValue(playerId);
-        const green = this.counters[playerId].green.getValue(playerId);
-        const red   = this.counters[playerId].red.getValue(playerId);
-        const tan   = this.counters[playerId].tan.getValue(playerId);
+      const blue = this.counters[playerId].blue.getValue(playerId);
+      const green = this.counters[playerId].green.getValue(playerId);
+      const red = this.counters[playerId].red.getValue(playerId);
+      const tan = this.counters[playerId].tan.getValue(playerId);
 
-        console.log(blue + ", " + green + ", " + red + ", " + tan);
+      console.log(blue + ", " + green + ", " + red + ", " + tan);
 
-        const total = blue + green + red + tan;
+      const total = blue + green + red + tan;
 
-        if (total === 0 && card.type !== "planet") {
-            this.showMessage(_("You must play a planet before playing a comet or moon"), "error");
-            return;
-        }
+      if (total === 0 && card.type !== "planet") {
+        this.showMessage(
+          _("You must play a planet before playing a comet or moon"),
+          "error"
+        );
+        return;
+      }
 
-        this.bgaPerformAction("actPlayCard", { card_id: card.id });
+      this.bgaPerformAction("actPlayCard", { card_id: card.id });
     },
 
     addCardBackToDeck(card) {
@@ -660,25 +693,25 @@ define([
     },
 
     createPlanetSlot(playerId, card) {
-    const solar = document.getElementById(`solar_${playerId}`);
+      const solar = document.getElementById(`solar_${playerId}`);
 
-    const slot = document.createElement("div");
-    slot.classList.add("planet-slot");
+      const slot = document.createElement("div");
+      slot.classList.add("planet-slot");
 
-        slot.innerHTML = `
+      slot.innerHTML = `
             <div class="moon-container"></div>
             <div class="planet-container"></div>
             <div class="comet-container"></div>
         `;
 
-        solar.appendChild(slot);
+      solar.appendChild(slot);
 
-        this.planetStocks[card.id] = new BgaCards.LineStock(
-            this.cardsManager,
-            slot.querySelector(".planet-container")
-        );
+      this.planetStocks[card.id] = new BgaCards.LineStock(
+        this.cardsManager,
+        slot.querySelector(".planet-container")
+      );
 
-        this.planetStocks[card.id].addCard(card);
+      this.planetStocks[card.id].addCard(card);
     },
     ///////////////////////////////////////////////////
     //// Player's action
@@ -715,58 +748,51 @@ define([
       const newValue = notif.newValue;
       const counter = notif.counter;
       const newRingCount = notif.newRingCount;
-       // Remove from hand if it's the current player's card
+      // Remove from hand if it's the current player's card
       if (playerId == this.player_id) {
         await this.handStock.removeCard(card);
       }
 
-
-
       if (card.type === "planet") {
-          this.createPlanetSlot(playerId, card);
+        this.createPlanetSlot(playerId, card);
       }
 
       if (card.type === "moon") {
-          const parent = card.parent_id;
-          this.moonStocks[parent].addCard(card, { index: card.parent_slot });
+        const parent = card.parent_id;
+        this.moonStocks[parent].addCard(card, { index: card.parent_slot });
       }
 
       if (card.type === "comet") {
-          const parent = card.parent_id;
-          this.cometStocks[parent].addCard(card, { index: card.parent_slot });
+        const parent = card.parent_id;
+        this.cometStocks[parent].addCard(card, { index: card.parent_slot });
       }
 
+      //add card to appropriate spot and tick its corresponding counters
+      if (card.type == "planet") {
+        if (counter == "blue") {
+          this.counters[playerId].blue.setValue(newValue);
+        }
+        if (counter == "green") {
+          this.counters[playerId].green.setValue(newValue);
+        }
+        if (counter == "red") {
+          this.counters[playerId].red.setValue(newValue);
+        }
+        if (counter == "tan") {
+          this.counters[playerId].tan.setValue(newValue);
+        }
+        if (newRingCount > 0) {
+          this.counters[playerId].ring.setValue(newRingCount);
+        }
+      }
 
-    //add card to appropriate spot and tick its corresponding counters  
-    if (card.type == "planet") {
-        if (counter == "blue"){
-            this.counters[playerId].blue.setValue(newValue);
-        }
-        if (counter == "green"){
-            this.counters[playerId].green.setValue(newValue);
-        }
-        if (counter == "red"){
-            this.counters[playerId].red.setValue(newValue);
-        }
-        if (counter == "tan"){
-            this.counters[playerId].tan.setValue(newValue);
-        }
-        if(newRingCount > 0){
-            this.counters[playerId].ring.setValue(newRingCount);
-        }
-      
-    }
-
-    if (card.type == "comet") {
+      if (card.type == "comet") {
         this.counters[playerId].comet.setValue(newValue);
-    }
-    
+      }
+
       if (card.type == "moon") {
         this.counters[playerId].moon.setValue(newValue);
       }
-
-
-
     },
 
     /**

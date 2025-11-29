@@ -194,6 +194,7 @@
     min-height: 85px;  /* Reserve space even when empty */
     height: 85px;      /* Fixed height */
     width: 100%;
+    margin-left: 80px; /* half of cardWidth = 150px */
     z-index: 0;
 }
 
