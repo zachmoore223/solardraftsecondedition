@@ -31,10 +31,20 @@ class PlayerTurn extends GameState
     public function getArgs(): array
     {
         // Get some values from the current game situation from the database.
+        $activePlayerId = $this->game->getActivePlayerId();
+            
+            // Check if player has any planets
+            $hasPlanets = (int) $this->game->getUniqueValueFromDB("
+                SELECT COUNT(*)
+                FROM `card`
+                WHERE card_location = 'tableau'
+                AND card_location_arg = $activePlayerId
+                AND card_type = 'planet'
+            ") > 0;
 
-        return [
-            "playableCardsIds" => [1, 2],
-        ];
+            return [
+                "mustPlayPlanet" => !$hasPlanets  // Add this flag
+            ];
     }    
 
     /*******************
@@ -43,10 +53,11 @@ class PlayerTurn extends GameState
     #[PossibleAction]
     public function actPlayCard(int $card_id, int $activePlayerId)
     {   
-        $newRingCount = 0;
-        $newValue = 0;
         // Take card from player's hand
         $card = $this->game->cards->getCard($card_id);
+        $newRingCount = 0;
+        $newValue = 0;
+
 
         // Move card to the player's tableau
         $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
@@ -158,8 +169,7 @@ class PlayerTurn extends GameState
         // Add them to the card being sent to UI
         $card['parent_id'] = $parent_id;
         $card['parent_slot'] = $parent_slot;
-        $card['planet_order'] = $planet_order;
-        
+       
         $cardColor = $card['color'];
         $cardRings = $card['rings'];
         
@@ -330,4 +340,5 @@ class PlayerTurn extends GameState
     function zombie(int $playerId) {
         return $this->actPass($playerId);
     }
+
 }

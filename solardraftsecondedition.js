@@ -172,7 +172,7 @@ define([
       });
 
       this.handStock.onCardClick = (card) => {
-        this.bgaPerformAction("actPlayCard", { card_id: card.id });
+          this.playCard(this.player_id, card);
       };
 
       this.handStock.addCards(Array.from(Object.values(this.gamedatas.hand)));
@@ -616,6 +616,30 @@ define([
             script.
         
         */
+    playCard(playerId, card)  {      
+    
+      if (!this.isCurrentPlayerActive()) {
+        this.showMessage(_("It is not your turn"), "error");
+        return;
+    }
+
+        const blue  = this.counters[playerId].blue.getValue(playerId);
+        const green = this.counters[playerId].green.getValue(playerId);
+        const red   = this.counters[playerId].red.getValue(playerId);
+        const tan   = this.counters[playerId].tan.getValue(playerId);
+
+        console.log(blue + ", " + green + ", " + red + ", " + tan);
+
+        const total = blue + green + red + tan;
+
+        if (total === 0 && card.type !== "planet") {
+            this.showMessage(_("You must play a planet before playing a comet or moon"), "error");
+            return;
+        }
+
+        this.bgaPerformAction("actPlayCard", { card_id: card.id });
+    },
+
     addCardBackToDeck(card) {
       if (!card) {
         return;
@@ -656,37 +680,6 @@ define([
 
         this.planetStocks[card.id].addCard(card);
     },
-
-    addMoonToLastPlanet(playerId, moonCard) {
-    const solar = document.getElementById(`solar_${playerId}`);
-    const slots = solar.querySelectorAll(".planet-slot");
-
-    const lastSlot = slots[slots.length - 1]; // attach to last played planet
-
-    const moonStock = new BgaCards.LineStock(
-        this.cardsManager,
-        lastSlot.querySelector(".moon-container")
-    );
-
-    moonStock.addCard(moonCard);
-},
-
-addCometToLastPlanet(playerId, cometCard) {
-    const solar = document.getElementById(`solar_${playerId}`);
-    const slots = solar.querySelectorAll(".planet-slot");
-
-    const lastSlot = slots[slots.length - 1]; // comets always attach to latest
-
-    const cometStock = new BgaCards.LineStock(
-        this.cardsManager,
-        lastSlot.querySelector(".comet-container")
-    );
-
-    cometStock.addCard(cometCard);
-},
-
-
-
     ///////////////////////////////////////////////////
     //// Player's action
     //change this to directly occur from the onClick
