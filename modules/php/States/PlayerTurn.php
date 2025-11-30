@@ -221,6 +221,12 @@ class PlayerTurn extends GameState
             $newValue = $this->game->moon_count->get($activePlayerId);
             $counter = 'moon';  
         }
+        /*debuigging info */
+        error_log("planet_order BEFORE move: " . json_encode($planet_order));
+        error_log("planet_index = " . $planet_index);
+        error_log("parent_id = " . $parent_id . " parent_slot = " . $parent_slot);
+        error_log("card being played: " . json_encode($card));
+
 
         // Notify all players
         $this->notify->all(

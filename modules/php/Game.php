@@ -322,6 +322,7 @@ class Game extends \Bga\GameFramework\Table
 
                 $result['tableau'][$p_id] = $this->enrichCards($cards);
             }
+
             
             // ----------------------
             // HAND COUNTS

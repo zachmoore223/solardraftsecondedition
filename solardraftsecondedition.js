@@ -414,7 +414,7 @@ define([
         const tableau = gamedatas.tableau[player.id];
         if (!tableau) return;
 
-        const cards = Object.values(tableau).sort((a, b) => a.id - b.id);
+        const cards = Object.values(tableau).sort((a, b) => a.planet_order - b.planet_order);
 
         // First pass: create all planet slots
         cards.forEach((card) => {
