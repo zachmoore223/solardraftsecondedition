@@ -350,12 +350,25 @@ define([
           "beforeend",
           `
               <div class="playertable whiteblock playertable_${player.id}">
-                  <div class="player-title">Solar System – ${player.name}</div>
+                  <div class="player-title">
+                    <strong>Solar System – 
+                      <span class="player-name" id="playername_${player.id}">
+                        ${player.name}
+                      </span>
+                    </strong>
+                  </div>
                   <div class="solar-system" id="solar_${player.id}"></div>
               </div>
               `
         );
+
+        //display player name same color as player's color
+        const nameEl = document.getElementById(`playername_${player.id}`);
+        nameEl.style.color = `#${player.color}`;
+
       });
+
+
 
       // Move LOCAL player's system into personal view
       const localPlayerId = this.player_id;
