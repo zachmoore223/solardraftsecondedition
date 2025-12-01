@@ -33,7 +33,7 @@ class Game extends \Bga\GameFramework\Table
     public PlayerCounter $comet_count;
     public PlayerCounter $moon_count;
     public PlayerCounter $ring_count;
-    public $planetOrder = [];      
+    public $planetOrder = [];   
     public $cards;
     const LOCATION_DECK = 'deck';
     const LOCATION_DISCARD = 'discardPile';

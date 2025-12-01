@@ -59,10 +59,7 @@ class PlayerTurn extends GameState
         $newValue = 0;
 
 
-        // Move card to the player's tableau
-        $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
-
-        // Enrich before sending
+       // Enrich before sending
         $card = $this->game->enrichCard($card);
 
         // Get all planets currently in tableau (before adding this card)
@@ -86,6 +83,9 @@ class PlayerTurn extends GameState
             );
             $card['planet_order'] = $planet_index;
         }
+
+        // Move card to the player's tableau
+        $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
 
         //---------------------------------------
         // Determine parent planet / slot (REAL BGA VERSION FOR STATE CLASS)

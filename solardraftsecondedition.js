@@ -299,7 +299,7 @@ define([
         console.log("Card:", card);
 
         if (!this.isCurrentPlayerActive()) {
-          console.log("Not your turn");
+          console.log("It is not your turn");
           return;
         }
 
@@ -318,7 +318,7 @@ define([
         console.log("Card:", card);
 
         if (!this.isCurrentPlayerActive()) {
-          console.log("Not your turn");
+          console.log("It is not your turn");
           return;
         }
 
@@ -365,10 +365,7 @@ define([
         //display player name same color as player's color
         const nameEl = document.getElementById(`playername_${player.id}`);
         nameEl.style.color = `#${player.color}`;
-
       });
-
-
 
       // Move LOCAL player's system into personal view
       const localPlayerId = this.player_id;
@@ -427,7 +424,9 @@ define([
         const tableau = gamedatas.tableau[player.id];
         if (!tableau) return;
 
-        const cards = Object.values(tableau).sort((a, b) => a.planet_order - b.planet_order);
+        const cards = Object.values(tableau).sort(
+          (a, b) => a.planet_order - b.planet_order
+        );
 
         // First pass: create all planet slots
         cards.forEach((card) => {
@@ -661,11 +660,14 @@ define([
         
         */
     playCard(playerId, card) {
+      console.log("Card played!")
+
       if (!this.isCurrentPlayerActive()) {
         this.showMessage(_("It is not your turn"), "error");
         return;
       }
 
+      //******MUST PLAY PLANET FIRST
       const blue = this.counters[playerId].blue.getValue(playerId);
       const green = this.counters[playerId].green.getValue(playerId);
       const red = this.counters[playerId].red.getValue(playerId);
@@ -683,6 +685,18 @@ define([
         return;
       }
 
+      //******CANNOT PLAY COMET NEXT ANOTHER COMET
+      const lastCardIsAComet = this.isLastCardInTableauAComet(playerId);
+
+      if (card.type === "comet" && lastCardIsAComet) {
+        this.showMessage(
+          _("You cannot play a comet next to another comet"),
+          "error"
+        );
+        return;
+      }
+
+      //******PLAY CARD AFTER ALL CHECKS
       this.bgaPerformAction("actPlayCard", { card_id: card.id });
     },
 
@@ -705,31 +719,46 @@ define([
       );
     },
 
-    createPlanetSlot(playerId, card) {
-      const solar = document.getElementById(`solar_${playerId}`);
+    isLastCardInTableauAComet(playerId) {
+      // Use the real tableau data sent by the server
+      const tableau = Object.values(this.gamedatas.tableau[playerId]);
+      const cards = Object.values(tableau);
 
-      const slot = document.createElement("div");
-      slot.classList.add("planet-slot");
+      if (cards.length === 0) return null;
 
-      slot.innerHTML = `
-            <div class="moon-container"></div>
-            <div class="planet-container"></div>
-            <div class="comet-container"></div>
-        `;
+      // Step 1 - Get last planet using planet_order (highest numbered planet)
+      const planets = cards
+        .filter((c) => c.type === "planet")
+        .map((p) => ({ ...p, planet_order: Number(p.planet_order) }));
 
-      solar.appendChild(slot);
+      if (planets.length === 0) return null;
 
-      this.planetStocks[card.id] = new BgaCards.LineStock(
-        this.cardsManager,
-        slot.querySelector(".planet-container")
+      planets.sort((a, b) => b.planet_order - a.planet_order);
+
+      const lastPlanet = planets[0];
+
+      // Step 2 — Check if last planet has a comet
+      const hasComet = cards.filter(
+        (c) =>
+          c.type === "comet" && Number(c.parent_id) === Number(lastPlanet.id)
       );
 
-      this.planetStocks[card.id].addCard(card);
+      if (hasComet.length > 0) {
+        return true;
+      }
+
+      return false;
     },
+
     ///////////////////////////////////////////////////
     //// Player's action
     //change this to directly occur from the onClick
     onDeckClick: function () {
+      if (!this.isCurrentPlayerActive()) {
+        this.showMessage(_("It is not your turn"), "error");
+        return;
+      }
+
       this.bgaPerformAction("actDrawCard");
     },
     ///////////////////////////////////////////////////
@@ -806,6 +835,13 @@ define([
       if (card.type == "moon") {
         this.counters[playerId].moon.setValue(newValue);
       }
+
+
+      // **Update gamedatas.tableau with the new card**
+      if (!this.gamedatas.tableau[playerId]) {
+        this.gamedatas.tableau[playerId] = {};
+      }
+      this.gamedatas.tableau[playerId][card.id] = card;
     },
 
     /**
