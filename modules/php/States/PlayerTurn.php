@@ -24,6 +24,12 @@ class PlayerTurn extends GameState
         );
     }
 
+        public function stMoonPlacement()
+    {
+        // This is called when entering the state
+        // You can set any state variables here if needed
+    }
+
     /**
      * Game state arguments, example content.
      *
@@ -102,37 +108,11 @@ class PlayerTurn extends GameState
         }
 
         // MOONS attach to most recent planet
-        // MOONS attach to a selected planet
+        // If it's a moon, transition to moon placement state instead
         if ($card['type'] === 'moon') {
-
-            // Validate that target_planet_id was provided
-            if ($target_planet_id === null) {
-                throw new UserException("You must select a planet to attach this moon to");
-            }
-
-            // Validate that the target planet exists and belongs to this player
-            $targetPlanet = $this->game->getObjectFromDB("
-            SELECT card_id
-            FROM `card`
-            WHERE card_id = $target_planet_id
-            AND card_location = 'tableau'
-            AND card_location_arg = $activePlayerId
-            AND card_type = 'planet'
-        ");
-
-            if (!$targetPlanet) {
-                throw new UserException("Invalid planet selected");
-            }
-
-            $parent_id = (int)$target_planet_id;
-
-            // Count moons already attached to THIS planet
-            $parent_slot = (int) $this->game->getUniqueValueFromDB("
-            SELECT COUNT(*)
-            FROM `card`
-            WHERE parent_id = $parent_id
-            AND card_type = 'moon'
-        ");
+            // Store the moon card ID in a global variable so the next state knows which card
+            $this->game->setGameStateValue('pending_moon_card_id', $card_id);
+            return MoonPlacement::class;
         }
 
 
@@ -257,6 +237,7 @@ class PlayerTurn extends GameState
 
         return PlayerTurn::class;
     }
+
     /*******************
      *   DRAFT A CARD  *           
      *******************/
@@ -290,7 +271,6 @@ class PlayerTurn extends GameState
         // Advance state → Let player play or pass
         return PlayerTurn::class;
     }
-
 
     /*******************
      *   DRAW A CARD   *           

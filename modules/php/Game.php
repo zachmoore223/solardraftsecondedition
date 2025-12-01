@@ -179,7 +179,9 @@ class Game extends \Bga\GameFramework\Table
     {
         parent::__construct();
 
-        $this->initGameStateLabels([]); // mandatory, even if the array is empty
+        $this->initGameStateLabels([
+            'pending_moon_card_id' => 10, // Add this line
+        ]); // mandatory, even if the array is empty
 
         $this->blue_planet_count = $this->counterFactory->createPlayerCounter('blue_planet_count');
         $this->green_planet_count = $this->counterFactory->createPlayerCounter('green_planet_count');
