@@ -15,7 +15,8 @@ class PlayerTurn extends GameState
     function __construct(
         protected Game $game,
     ) {
-        parent::__construct($game,
+        parent::__construct(
+            $game,
             id: 10,
             type: StateType::ACTIVE_PLAYER,
             description: clienttranslate('${actplayer} must DRAFT or PLAY a card'),
@@ -32,9 +33,9 @@ class PlayerTurn extends GameState
     {
         // Get some values from the current game situation from the database.
         $activePlayerId = $this->game->getActivePlayerId();
-            
-            // Check if player has any planets
-            $hasPlanets = (int) $this->game->getUniqueValueFromDB("
+
+        // Check if player has any planets
+        $hasPlanets = (int) $this->game->getUniqueValueFromDB("
                 SELECT COUNT(*)
                 FROM `card`
                 WHERE card_location = 'tableau'
@@ -42,24 +43,24 @@ class PlayerTurn extends GameState
                 AND card_type = 'planet'
             ") > 0;
 
-            return [
-                "mustPlayPlanet" => !$hasPlanets  // Add this flag
-            ];
-    }    
+        return [
+            "mustPlayPlanet" => !$hasPlanets  // Add this flag
+        ];
+    }
 
     /*******************
      *   PLAY A CARD   *           
      *******************/
     #[PossibleAction]
-    public function actPlayCard(int $card_id, int $activePlayerId)
-    {   
+    public function actPlayCard(int $card_id, int $activePlayerId, ?int $target_planet_id = null)
+    {
         // Take card from player's hand
         $card = $this->game->cards->getCard($card_id);
         $newRingCount = 0;
         $newValue = 0;
 
 
-       // Enrich before sending
+        // Enrich before sending
         $card = $this->game->enrichCard($card);
 
         // Get all planets currently in tableau (before adding this card)
@@ -76,7 +77,8 @@ class PlayerTurn extends GameState
 
         // Save this index on the new planet (planets only)
         if ($card['type'] === 'planet') {
-            $this->game->DbQuery("
+            $this->game->DbQuery(
+                "
                 UPDATE `card`
                 SET planet_order = $planet_index
                 WHERE card_id = " . (int) $card['id']
@@ -100,31 +102,39 @@ class PlayerTurn extends GameState
         }
 
         // MOONS attach to most recent planet
+        // MOONS attach to a selected planet
         if ($card['type'] === 'moon') {
 
-            // 1. Find the latest planet for this player
-            $latestPlanet = $this->game->getObjectFromDB("
-                SELECT card_id
-                FROM `card`
-                WHERE card_location = 'tableau'
-                AND card_location_arg = $activePlayerId
-                AND card_type = 'planet'
-                ORDER BY planet_order DESC
-                LIMIT 1
-            ");
-
-            if ($latestPlanet) {
-                $parent_id = (int)$latestPlanet['card_id'];
-
-                // 2. Count moons already attached
-                $parent_slot = (int) $this->game->getUniqueValueFromDB("
-                    SELECT COUNT(*)
-                    FROM `card`
-                    WHERE parent_id = $parent_id
-                    AND card_type = 'moon'
-                ");
+            // Validate that target_planet_id was provided
+            if ($target_planet_id === null) {
+                throw new UserException("You must select a planet to attach this moon to");
             }
+
+            // Validate that the target planet exists and belongs to this player
+            $targetPlanet = $this->game->getObjectFromDB("
+            SELECT card_id
+            FROM `card`
+            WHERE card_id = $target_planet_id
+            AND card_location = 'tableau'
+            AND card_location_arg = $activePlayerId
+            AND card_type = 'planet'
+        ");
+
+            if (!$targetPlanet) {
+                throw new UserException("Invalid planet selected");
+            }
+
+            $parent_id = (int)$target_planet_id;
+
+            // Count moons already attached to THIS planet
+            $parent_slot = (int) $this->game->getUniqueValueFromDB("
+            SELECT COUNT(*)
+            FROM `card`
+            WHERE parent_id = $parent_id
+            AND card_type = 'moon'
+        ");
         }
+
 
         // COMETS attach to the most recent planet
         if ($card['type'] === 'comet') {
@@ -159,7 +169,8 @@ class PlayerTurn extends GameState
         $parentIdSql   = ($parent_id === null)   ? "NULL" : $parent_id;
         $parentSlotSql = ($parent_slot === null) ? "NULL" : $parent_slot;
 
-        $this->game->DbQuery("
+        $this->game->DbQuery(
+            "
             UPDATE `card`
             SET parent_id = $parentIdSql,
                 parent_slot = $parentSlotSql
@@ -169,10 +180,10 @@ class PlayerTurn extends GameState
         // Add them to the card being sent to UI
         $card['parent_id'] = $parent_id;
         $card['parent_slot'] = $parent_slot;
-       
+
         $cardColor = $card['color'];
         $cardRings = $card['rings'];
-        
+
         if ($card['type'] === 'planet') {
 
             $cardColor = $card['color'];
@@ -204,22 +215,22 @@ class PlayerTurn extends GameState
                     break;
             }
         }
-        
-        if ($cardRings > 0){
+
+        if ($cardRings > 0) {
             $this->game->ring_count->inc($activePlayerId, $cardRings);
             $newRingCount = $this->game->ring_count->get($activePlayerId);
-        } 
-
-        if ($card['type'] === 'comet'){
-            $this->game->comet_count->inc($activePlayerId, 1);
-            $newValue = $this->game->comet_count->get($activePlayerId);
-            $counter = 'comet';            
         }
 
-        if ($card['type'] === 'moon'){
+        if ($card['type'] === 'comet') {
+            $this->game->comet_count->inc($activePlayerId, 1);
+            $newValue = $this->game->comet_count->get($activePlayerId);
+            $counter = 'comet';
+        }
+
+        if ($card['type'] === 'moon') {
             $this->game->moon_count->inc($activePlayerId, 1);
             $newValue = $this->game->moon_count->get($activePlayerId);
-            $counter = 'moon';  
+            $counter = 'moon';
         }
         /*debuigging info */
         error_log("planet_order BEFORE move: " . json_encode($planet_order));
@@ -251,7 +262,8 @@ class PlayerTurn extends GameState
      *******************/
     #[PossibleAction]
     public function actDraftCard(int $card_id, int $row, int $slot, int $activePlayerId)
-    {   $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
+    {
+        $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
         $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
         $card = $this->game->cards->getCard($card_id);
         // Remember where the card was (row & position)
@@ -261,7 +273,7 @@ class PlayerTurn extends GameState
         // Move card from row to hand
         $this->game->cards->moveCard($card_id, 'hand', $activePlayerId);
         // Replace card from top of deck to the proper solar row & slot #
-         $this->game->cards->moveCard($deckTop['id'], $row, $slot);
+        $this->game->cards->moveCard($deckTop['id'], $row, $slot);
 
         $this->notify->all("draft", clienttranslate('${player_name} DRAFTS ${cardName}'), [
             'player_id' => $activePlayerId,
@@ -285,11 +297,14 @@ class PlayerTurn extends GameState
      *******************/
     #[PossibleAction]
     public function actDrawCard(int $activePlayerId)
-    {   $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
+    {
+        $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
         $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
 
         // Notify each player that current player drew a card
-        $this->game->notify->all('deckDraw', clienttranslate('${player_name} drew a card'),
+        $this->game->notify->all(
+            'deckDraw',
+            clienttranslate('${player_name} drew a card'),
             [
                 'player_id' => $activePlayerId,
                 'player_name' => $this->game->getPlayerNameById($activePlayerId),
@@ -301,12 +316,16 @@ class PlayerTurn extends GameState
         );
 
         // Notify current player only which card they drew 
-        $this->notify->player($activePlayerId, "dealCardPrivate", clienttranslate('You drew ${cardName}'), 
-        [
-            "card" => $deckTop,
-            "type" => $deckTop["type"],
-            "cardName" => $this->game->getCardName($deckTop)
-        ]);
+        $this->notify->player(
+            $activePlayerId,
+            "dealCardPrivate",
+            clienttranslate('You drew ${cardName}'),
+            [
+                "card" => $deckTop,
+                "type" => $deckTop["type"],
+                "cardName" => $this->game->getCardName($deckTop)
+            ]
+        );
 
 
         return PlayerTurn::class;
@@ -328,7 +347,7 @@ class PlayerTurn extends GameState
         return NextPlayer::class;
     }
 
-    
+
 
     /**
      * This method is called each time it is the turn of a player who has quit the game (= "zombie" player).
@@ -343,8 +362,8 @@ class PlayerTurn extends GameState
      * you must _never_ use `getCurrentPlayerId()` or `getCurrentPlayerName()`, 
      * but use the $playerId passed in parameter and $this->game->getPlayerNameById($playerId) instead.
      */
-    function zombie(int $playerId) {
+    function zombie(int $playerId)
+    {
         return $this->actPass($playerId);
     }
-
 }

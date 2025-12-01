@@ -660,7 +660,7 @@ define([
         
         */
     playCard(playerId, card) {
-      console.log("Card played!")
+      console.log("Card played!");
 
       if (!this.isCurrentPlayerActive()) {
         this.showMessage(_("It is not your turn"), "error");
@@ -696,27 +696,79 @@ define([
         return;
       }
 
+      //******IF MOON, ENTER PLANET SELECTION MODE
+      if (card.type === "moon") {
+        this.enterMoonPlacementMode(card);
+        return;
+      }
+
       //******PLAY CARD AFTER ALL CHECKS
       this.bgaPerformAction("actPlayCard", { card_id: card.id });
     },
 
-    addCardBackToDeck(card) {
-      if (!card) {
-        return;
-      }
+    enterMoonPlacementMode(moonCard) {
+      this.moonBeingPlaced = moonCard;
+      this.selectedPlanetForMoon = null;
 
-      const deck = document.getElementById("solar-deck");
-      if (!deck) return;
+      // Highlight all planets in player's tableau
+      const playerId = this.player_id;
+      const tableau = Object.values(this.gamedatas.tableau[playerId]);
+      const planets = tableau.filter((c) => c.type === "planet");
 
-      dojo.create(
-        "div",
-        {
-          id: "deck_top_card",
-          class: `card card-back-${card.type}`,
-          style: "z-index:0;",
-        },
-        deck
+      planets.forEach((planet) => {
+        const planetDiv = document.getElementById(`card-${planet.id}`);
+        if (planetDiv) {
+          dojo.addClass(planetDiv, "selectable-planet");
+
+          // Add click handler
+          this.connect(planetDiv, "onclick", () =>
+            this.onPlanetSelected(planet)
+          );
+        }
+      });
+
+      this.showMessage(_("Select a planet to attach this moon"), "info");
+
+      // Add cancel button
+      this.addActionButton(
+        "cancel_moon_btn",
+        _("Cancel"),
+        () => this.cancelMoonPlacement(),
+        null,
+        false,
+        "gray"
       );
+    },
+
+    onPlanetSelected(planet) {
+      if (!this.moonBeingPlaced) return;
+
+      // Remove all highlights
+      dojo.query(".selectable-planet").removeClass("selectable-planet");
+
+      // Remove cancel button
+      const cancelBtn = document.getElementById("cancel_moon_btn");
+      if (cancelBtn) cancelBtn.remove();
+
+      // Play the moon on the selected planet
+      this.bgaPerformAction("actPlayCard", {
+        card_id: this.moonBeingPlaced.id,
+        target_planet_id: planet.id,
+      });
+
+      this.moonBeingPlaced = null;
+    },
+
+    cancelMoonPlacement() {
+      // Remove all highlights
+      dojo.query(".selectable-planet").removeClass("selectable-planet");
+
+      // Remove cancel button
+      const cancelBtn = document.getElementById("cancel_moon_btn");
+      if (cancelBtn) cancelBtn.remove();
+
+      this.moonBeingPlaced = null;
+      this.showMessage(_("Moon placement cancelled"), "info");
     },
 
     isLastCardInTableauAComet(playerId) {
@@ -748,6 +800,25 @@ define([
       }
 
       return false;
+    },
+
+    addCardBackToDeck(card) {
+      if (!card) {
+        return;
+      }
+
+      const deck = document.getElementById("solar-deck");
+      if (!deck) return;
+
+      dojo.create(
+        "div",
+        {
+          id: "deck_top_card",
+          class: `card card-back-${card.type}`,
+          style: "z-index:0;",
+        },
+        deck
+      );
     },
 
     ///////////////////////////////////////////////////
@@ -835,7 +906,6 @@ define([
       if (card.type == "moon") {
         this.counters[playerId].moon.setValue(newValue);
       }
-
 
       // **Update gamedatas.tableau with the new card**
       if (!this.gamedatas.tableau[playerId]) {
