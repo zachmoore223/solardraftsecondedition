@@ -730,6 +730,9 @@ cleanupMoonPlacement() {
         }
     });
     
+    // UNSELECT the moon card in hand
+    this.handStock.unselectAll();
+    
     // Remove cancel button
     const cancelBtn = document.getElementById("cancel_moon_btn");
     if (cancelBtn) cancelBtn.remove();
