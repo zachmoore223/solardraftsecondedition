@@ -24,7 +24,7 @@ class PlayerTurn extends GameState
         );
     }
 
-        public function stMoonPlacement()
+    public function stMoonPlacement()
     {
         // This is called when entering the state
         // You can set any state variables here if needed

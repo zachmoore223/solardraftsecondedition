@@ -27,7 +27,7 @@ class MoonPlacement extends GameState
     public function getArgs(): array
     {
         $pending_moon_card_id = $this->game->getGameStateValue('pending_moon_card_id');
-        
+
         return [
             'pending_moon_card_id' => $pending_moon_card_id
         ];
@@ -38,23 +38,43 @@ class MoonPlacement extends GameState
     {
         // Get the moon card
         $card = $this->game->cards->getCard($card_id);
-        
+
         if ($card['type'] !== 'moon') {
             throw new UserException("This card is not a moon");
         }
 
         // Validate that the target planet exists and belongs to this player
-        $targetPlanet = $this->game->getObjectFromDB("
-            SELECT card_id
-            FROM `card`
-            WHERE card_id = $target_planet_id
-            AND card_location = 'tableau'
-            AND card_location_arg = $activePlayerId
-            AND card_type = 'planet'
-        ");
+        $targetPlanet = $this->game->cards->getCard($target_planet_id);
 
         if (!$targetPlanet) {
             throw new UserException("Invalid planet selected");
+        }
+
+         // Get planet info to check moon limit
+        $planetInfo = $this->game->getCardInfo($targetPlanet);
+        $moonLimit = $planetInfo['moonLimit'] ?? 2; // Default moon limit is 2
+
+        // Count current moons on this planet
+        $currentMoonCount = (int) $this->game->getUniqueValueFromDB("
+            SELECT COUNT(*)
+            FROM `card`
+            WHERE parent_id = $target_planet_id
+            AND card_type = 'moon'
+        ");
+
+        // Check if planet is at moon limit and cancel action if so
+        if ($currentMoonCount >= $moonLimit) {
+            // Send error message to the player
+                $this->notify->player(
+                    $activePlayerId,
+                    'message',
+                    clienttranslate('This planet already has the maximum number of moons. Please select another planet.'),
+                    []
+                );
+            $pending_moon_card_id = $this->game->getGameStateValue('pending_moon_card_id');
+
+            // Card should still be in hand, so just transition back
+            return PlayerTurn::class;
         }
 
         // Enrich the card
@@ -72,7 +92,8 @@ class MoonPlacement extends GameState
             AND card_type = 'moon'
         ");
 
-        $this->game->DbQuery("
+        $this->game->DbQuery(
+            "
             UPDATE `card`
             SET parent_id = $parent_id,
                 parent_slot = $parent_slot
@@ -117,7 +138,7 @@ class MoonPlacement extends GameState
     {
         // Return the moon card back to hand
         $pending_moon_card_id = $this->game->getGameStateValue('pending_moon_card_id');
-        
+
         // Card should still be in hand, so just transition back
         return PlayerTurn::class;
     }

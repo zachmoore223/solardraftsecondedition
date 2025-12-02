@@ -91,11 +91,22 @@
     box-shadow: none !important;
     margin-top: 20px;
 }
+#player-hand_wrap {
+    position: relative;
+    min-height: 250px; /* Reserve space so container doesn't collapse */
+    height: auto;
+}
 
 #player-hand {
-    position: relative;   /* required for HandStock */
+    position: relative !important;
+    min-height: 236px;
     width: 100%;
-    height: 100%;
+    /* Let the HandStock manage internal positioning */
+}
+
+/* Ensure the whiteblock stays in place */
+#player-hand_wrap.whiteblock {
+    display: block;
 }
 
 #solar-deck{

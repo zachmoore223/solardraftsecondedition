@@ -588,31 +588,31 @@ define([
     onEnteringState: function (stateName, args) {
       console.log("Entering state: " + stateName, args);
 
-        switch (stateName) {
-            case "PlayerTurn":
-                // Normal turn UI
-                break;
-                
-            case "MoonPlacement":  // Changed from "moonPlacement"
-                this.onEnteringMoonPlacement(args);
-                break;
-        }
+      switch (stateName) {
+        case "PlayerTurn":
+          // Normal turn UI
+          break;
+
+        case "MoonPlacement": // Changed from "moonPlacement"
+          this.onEnteringMoonPlacement(args);
+          break;
+      }
     },
 
     // onLeavingState: this method is called each time we are leaving a game state.
     //                 You can use this method to perform some user interface changes at this moment.
     //
     onLeavingState: function (stateName) {
-        console.log("Leaving state: " + stateName);
+      console.log("Leaving state: " + stateName);
 
-        switch (stateName) {
-            case "moonPlacement":
-                this.cleanupMoonPlacement();
-                break;
+      switch (stateName) {
+        case "moonPlacement":
+          this.cleanupMoonPlacement();
+          break;
 
-            case "dummy":
-                break;
-        }
+        case "dummy":
+          break;
+      }
     },
 
     // onUpdateActionButtons: in this method you can manage "action buttons" that are displayed in the
@@ -639,104 +639,114 @@ define([
       }
     },
 
-onEnteringMoonPlacement(args) {
-    if (!this.isCurrentPlayerActive()) return;
+    onEnteringMoonPlacement(args) {
+      if (!this.isCurrentPlayerActive()) return;
 
-    console.log("=== ENTERING MOON PLACEMENT ===");
-    console.log("Full args:", args);
-    console.log("Nested args:", args.args);
-    console.log("=== TEST ===");
-    const playerId = this.player_id;
-    const tableau = Object.values(this.gamedatas.tableau[playerId]);
-    const planets = tableau.filter(c => c.type === "planet");
+      console.log("=== ENTERING MOON PLACEMENT ===");
+      console.log("Full args:", args);
+      console.log("Nested args:", args.args);
+      console.log("=== TEST ===");
+      
+      const playerId = this.player_id;
+      const tableau = Object.values(this.gamedatas.tableau[playerId]);
+      const planets = tableau.filter((c) => c.type === "planet");
 
-    console.log("Player ID:", playerId);
-    console.log("Tableau:", tableau);
-    console.log("Found planets:", planets);
+      console.log("Player ID:", playerId);
+      console.log("Tableau:", tableau);
+      console.log("Found planets:", planets);
 
-    // Enable selection mode on all planet stocks
-    planets.forEach(planet => {
+      // Enable selection mode on all planet stocks
+      planets.forEach((planet) => {
         console.log("Processing planet:", planet.id);
         const planetStock = this.planetStocks[planet.id];
         console.log("Planet stock found:", planetStock);
-        
+
         if (planetStock) {
-            console.log("Enabling selection for planet stock:", planet.id);
-            planetStock.setSelectionMode("single");
-            
-            // Set click handler for this stock
-            planetStock.onCardClick = (card) => {
-                console.log("Planet card clicked in stock:", card);
-                this.onPlanetSelectedForMoon(card);
-            };
+          console.log("Enabling selection for planet stock:", planet.id);
+          planetStock.setSelectionMode("single");
 
-            // Add visual highlight to the card
-            const cardDiv = document.querySelector(`[data-card-id="${planet.id}"]`);
-            console.log("Card div found:", cardDiv);
-            if (cardDiv) {
-                dojo.addClass(cardDiv, "selectable-planet");
-                console.log("Added selectable-planet class to:", cardDiv);
-            }
+          // Set click handler for this stock
+          planetStock.onCardClick = (card) => {
+            console.log("Planet card clicked in stock:", card);
+            this.onPlanetSelectedForMoon(card);
+          };
+
+          // Add visual highlight to the card
+          const cardDiv = document.querySelector(
+            `[data-card-id="${planet.id}"]`
+          );
+          console.log("Card div found:", cardDiv);
+          if (cardDiv) {
+            dojo.addClass(cardDiv, "selectable-planet");
+            console.log("Added selectable-planet class to:", cardDiv);
+          }
         } else {
-            console.error("No planet stock found for planet:", planet.id);
+          console.error("No planet stock found for planet:", planet.id);
         }
-    });
+      });
 
-    // Add cancel button
-    this.addActionButton("cancel_moon_btn", _("Cancel"), () => {
-        console.log("Cancel clicked");
-        this.cleanupMoonPlacement();
-        this.bgaPerformAction("actCancelMoonPlacement");
-    }, null, false, "gray");
-},
+      // Add cancel button
+      this.addActionButton(
+        "cancel_moon_btn",
+        _("Cancel"),
+        () => {
+          console.log("Cancel clicked");
+          this.cleanupMoonPlacement();
+          this.bgaPerformAction("actCancelMoonPlacement");
+        },
+        null,
+        false,
+        "gray"
+      );
+    },
 
-onPlanetSelectedForMoon(planet) {
-    console.log("=== PLANET SELECTED ===");
-    console.log("Selected planet:", planet);
-    
-    this.cleanupMoonPlacement();
-    
-    // Get the moon card ID from game state - use args.args
-    const moonCardId = this.gamedatas.gamestate.args.pending_moon_card_id;
-    
-    console.log("Moon card ID:", moonCardId);
-    console.log("Placing moon on planet:", planet.id);
-    
-    this.bgaPerformAction("actPlaceMoon", { 
+    onPlanetSelectedForMoon(planet) {
+      console.log("=== PLANET SELECTED ===");
+      console.log("Selected planet:", planet);
+
+      this.cleanupMoonPlacement();
+
+      // Get the moon card ID from game state - use args.args
+      const moonCardId = this.gamedatas.gamestate.args.pending_moon_card_id;
+
+      console.log("Moon card ID:", moonCardId);
+      console.log("Placing moon on planet:", planet.id);
+
+      this.bgaPerformAction("actPlaceMoon", {
         card_id: moonCardId,
-        target_planet_id: planet.id
-    });
-},
+        target_planet_id: planet.id,
+      });
+    },
 
-cleanupMoonPlacement() {
-    console.log("=== CLEANING UP MOON PLACEMENT ===");
-    
-    const playerId = this.player_id;
-    const tableau = Object.values(this.gamedatas.tableau[playerId] || {});
-    const planets = tableau.filter(c => c.type === "planet");
+    cleanupMoonPlacement() {
+      console.log("=== CLEANING UP MOON PLACEMENT ===");
 
-    // Disable selection and remove handlers from all planet stocks
-    planets.forEach(planet => {
+      const playerId = this.player_id;
+      const tableau = Object.values(this.gamedatas.tableau[playerId] || {});
+      const planets = tableau.filter((c) => c.type === "planet");
+
+      // Disable selection and remove handlers from all planet stocks
+      planets.forEach((planet) => {
         const planetStock = this.planetStocks[planet.id];
         if (planetStock) {
-            planetStock.setSelectionMode("none");
-            planetStock.onCardClick = undefined;
+          planetStock.setSelectionMode("none");
+          planetStock.onCardClick = undefined;
         }
 
         // Remove visual highlight
         const cardDiv = document.querySelector(`[data-card-id="${planet.id}"]`);
         if (cardDiv) {
-            dojo.removeClass(cardDiv, "selectable-planet");
+          dojo.removeClass(cardDiv, "selectable-planet");
         }
-    });
-    
-    // UNSELECT the moon card in hand
-    this.handStock.unselectAll();
-    
-    // Remove cancel button
-    const cancelBtn = document.getElementById("cancel_moon_btn");
-    if (cancelBtn) cancelBtn.remove();
-},
+      });
+
+      // UNSELECT the moon card in hand
+      this.handStock.unselectAll();
+
+      // Remove cancel button
+      const cancelBtn = document.getElementById("cancel_moon_btn");
+      if (cancelBtn) cancelBtn.remove();
+    },
     ///////////////////////////////////////////////////
     //// Utility methods
 
@@ -780,14 +790,11 @@ cleanupMoonPlacement() {
           _("You cannot play a comet next to another comet"),
           "error"
         );
+
+
+        
         return;
       }
-
-      //******IF MOON, ENTER PLANET SELECTION MODE
-      /*if (card.type === "moon") {
-        this.enterMoonPlacementMode(card);
-        return;
-      }*/
 
       //******PLAY CARD AFTER ALL CHECKS
       this.bgaPerformAction("actPlayCard", { card_id: card.id });
