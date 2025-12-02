@@ -579,12 +579,12 @@ define([
       console.log("Ending game setup");
     },
 
-    ///////////////////////////////////////////////////
-    //// Game & client states
-
-    // onEnteringState: this method is called each time we are entering into a new game state.
-    //                  You can use this method to perform some user interface changes at this moment.
-    //
+  /*------------------------------------------------------------------------------------/
+                                    GAME & CLIENT STATES
+  /*------------------------------------------------------------------------------------/
+    /*******************************
+    *            ENTER             *
+    *******************************/
     onEnteringState: function (stateName, args) {
       console.log("Entering state: " + stateName, args);
 
@@ -599,9 +599,9 @@ define([
       }
     },
 
-    // onLeavingState: this method is called each time we are leaving a game state.
-    //                 You can use this method to perform some user interface changes at this moment.
-    //
+    /*******************************
+    *            LEAVE             *
+    *******************************/
     onLeavingState: function (stateName) {
       console.log("Leaving state: " + stateName);
 
@@ -615,9 +615,9 @@ define([
       }
     },
 
-    // onUpdateActionButtons: in this method you can manage "action buttons" that are displayed in the
-    //                        action status bar (ie: the HTML links in the status bar).
-    //
+    /*******************************
+    *            UPDATE            *
+    *******************************/
     onUpdateActionButtons: function (stateName, args) {
       console.log("onUpdateActionButtons: " + stateName, args);
 
@@ -629,16 +629,13 @@ define([
               console.log("Playable cards:", args.playableCardsIds);
             }
             break;
-          /*
-                    this.addActionButton(
-                        'play_card_' + cardId,
-                        _('Play card with id ${card_id}').replace('${card_id}', cardId),
-                        'onCardClick'
-                    );*/
         }
       }
     },
 
+    /*******************************
+    *        MOON - PLACEMENT      *
+    *******************************/
     onEnteringMoonPlacement(args) {
       if (!this.isCurrentPlayerActive()) return;
 
@@ -700,6 +697,9 @@ define([
       );
     },
 
+    /*******************************
+    *          MOON - SELECT       *
+    *******************************/
     onPlanetSelectedForMoon(planet) {
       console.log("=== PLANET SELECTED ===");
       console.log("Selected planet:", planet);
@@ -718,6 +718,9 @@ define([
       });
     },
 
+    /*******************************
+    *         MOON - CLEANUP       *
+    *******************************/
     cleanupMoonPlacement() {
       console.log("=== CLEANING UP MOON PLACEMENT ===");
 
@@ -747,15 +750,14 @@ define([
       const cancelBtn = document.getElementById("cancel_moon_btn");
       if (cancelBtn) cancelBtn.remove();
     },
-    ///////////////////////////////////////////////////
-    //// Utility methods
 
-    /*
-        
-            Here, you can defines some utility methods that you can use everywhere in your javascript
-            script.
-        
-        */
+  /*------------------------------------------------------------------------------------/
+                                      ACTIONS
+  /*------------------------------------------------------------------------------------/
+    /*******************************
+    *             PLAY             *
+    *******************************/
+    
     playCard(playerId, card) {
       console.log("Card played!");
 
@@ -850,9 +852,6 @@ define([
       );
     },
 
-    ///////////////////////////////////////////////////
-    //// Player's action
-    //change this to directly occur from the onClick
     onDeckClick: function () {
       if (!this.isCurrentPlayerActive()) {
         this.showMessage(_("It is not your turn"), "error");
@@ -861,18 +860,13 @@ define([
 
       this.bgaPerformAction("actDrawCard");
     },
-    ///////////////////////////////////////////////////
-    //// Reaction to cometD notifications
 
-    /*
-            setupNotifications:
-            
-            In this method, you associate each of your game notifications with your local method to handle it.
-            
-            Note: game notification names correspond to "notifyAllPlayers" and "notifyPlayer" calls in
-                  your solardraftsecondedition.game.php file.
-        
-        */
+  /*------------------------------------------------------------------------------------/
+                                    NOTIFICATIONS
+  /*------------------------------------------------------------------------------------/
+    /*******************************
+    *            SETUP             *
+    *******************************/
     setupNotifications: function () {
       console.log("notifications subscriptions setup");
 
@@ -880,9 +874,11 @@ define([
       this.bgaSetupPromiseNotifications();
     },
 
-    /**
-     * Handle card played notification
-     */
+
+
+    /*******************************
+    *             PLAY             *
+    *******************************/
     notif_cardPlayed: async function (notif) {
       console.log("notif_cardPlayed", notif);
       const card = notif.card;
@@ -943,9 +939,9 @@ define([
       this.gamedatas.tableau[playerId][card.id] = card;
     },
 
-    /**
-     * Handle deck draw notification (public - just shows someone drew)
-     */
+    /*******************************
+    *             DRAW             *
+    *******************************/
     notif_deckDraw: async function (notif) {
       console.log("notif_deckDraw", notif);
 
@@ -974,9 +970,9 @@ define([
       await this.handStock.addCard(notif.deckTop);
     },
 
-    /**
-     * Handle draft notification
-     */
+    /*******************************
+    *             DRAFT            *
+    *******************************/
     notif_draft: async function (notif) {
       console.log("notif_draft", notif);
       const row = notif.row; // 'solar1' or 'solar2'
@@ -1022,28 +1018,13 @@ define([
       }
     },
 
-    /**
-     * Handle pass notification
-     */
+    /*******************************
+    *             PASS             *
+    *******************************/
     notif_pass: function (notif) {
       console.log("notif_pass", notif);
       // Nothing to do visually for a pass
     },
-    // TODO: from this point and below, you can write your game notifications handling methods
 
-    /*
-        Example:
-        
-        notif_cardPlayed: async function( args )
-        {
-            console.log( 'notif_cardPlayed' );
-            console.log( args );
-            
-            // Note: args contains the arguments specified during you "notifyAllPlayers" / "notifyPlayer" PHP call
-            
-            // TODO: play the card in the user interface.
-        },    
-        
-        */
   });
 });
