@@ -116,29 +116,29 @@ class Game extends \Bga\GameFramework\Table
         'comet' => [
             61 => [ 'name'=>'Comet1',  'points'=>1, 'ability'=>'DRAFT 2 CARDS.' ],
             62 => [ 'name'=>'Comet2',  'points'=>1, 'ability'=>'DRAFT A CARD and then PLAY A CARD.' ],
-            63 => [ 'name'=>'Comet3',  'points'=>1, 'ability'=>'DRAFT A CARD for each bonus token you currently have.' ],
-            64 => [ 'name'=>'Comet4',  'points'=>0, 'ability'=>'DRAFT A CARD for each MOON orbiting adjacent planets.' ],
+            63 => [ 'name'=>'Comet3',  'points'=>1, 'ability'=>'DRAFT A CARD for each bonus token you currently hold.' ],
+            64 => [ 'name'=>'Comet4',  'points'=>0, 'ability'=>'DRAFT A CARD for each MOON orbiting adjacent planet.' ],
             65 => [ 'name'=>'Comet5',  'points'=>0, 'ability'=>'DRAFT A CARD for each RING adjacent planet has.' ],
-            66 => [ 'name'=>'Comet6',  'points'=>2, 'ability'=>'PLAY A CARD of cost 1 or less from your discard.' ],
-            67 => [ 'name'=>'Comet7',  'points'=>1, 'ability'=>'Return a played MOON to your hand, then PLAY A MOON.' ],
-            68 => [ 'name'=>'Comet8',  'points'=>0, 'ability'=>'Choose a planet: it CANNOT HAVE MOONS for the rest of game.' ],
-            69 => [ 'name'=>'Comet9',  'points'=>2, 'ability'=>'Discard 1 card: GAIN 2 POINTS.' ],
-            70 => [ 'name'=>'Comet10', 'points'=>0, 'ability'=>'Move one of your MOONS to another planet.' ],
-            71 => [ 'name'=>'Comet11', 'points'=>2, 'ability'=>'PLAY any SMALL planet from your hand for free.' ],
-            72 => [ 'name'=>'Comet12', 'points'=>1, 'ability'=>'Choose ANY planet: its POINT VALUE becomes 2.' ],
-            73 => [ 'name'=>'Comet13', 'points'=>1, 'ability'=>'STEAL 1 MOON from another player (if possible).' ],
-            74 => [ 'name'=>'Comet14', 'points'=>2, 'ability'=>'DRAW 3 CARDS, keep 1, discard the rest.' ],
-            75 => [ 'name'=>'Comet15', 'points'=>0, 'ability'=>'Choose an OPPONENT: they DISCARD 1 CARD.' ],
-            76 => [ 'name'=>'Comet16', 'points'=>1, 'ability'=>'If adjacent to a BLUE planet: GAIN 3 POINTS.' ],
-            77 => [ 'name'=>'Comet17', 'points'=>1, 'ability'=>'If adjacent to a GREEN planet: GAIN 3 POINTS.' ],
-            78 => [ 'name'=>'Comet18', 'points'=>1, 'ability'=>'If adjacent to a RED planet: GAIN 3 POINTS.' ],
-            79 => [ 'name'=>'Comet19', 'points'=>2, 'ability'=>'Score DOUBLE POINTS for this COMET.' ],
-            80 => [ 'name'=>'Comet20', 'points'=>0, 'ability'=>'SWAP two adjacent planets in your system.' ],
-            81 => [ 'name'=>'Comet21', 'points'=>0, 'ability'=>'Move a planet in your system to a new location.' ],
-            82 => [ 'name'=>'Comet22', 'points'=>1, 'ability'=>'Reveal top 3 cards of deck: take 1, discard the others.' ],
-            83 => [ 'name'=>'Comet23', 'points'=>2, 'ability'=>'PLAY a MEDIUM planet for free.' ],
-            84 => [ 'name'=>'Comet24', 'points'=>1, 'ability'=>'Each opponent discards 1 MOON (if they have one).' ],
-            85 => [ 'name'=>'Comet25', 'points'=>0, 'ability'=>'Copy the effect of the LAST PLAYED COMET.' ],
+            66 => [ 'name'=>'Comet6',  'points'=>2, 'ability'=>'DRAFT A CARD for every two COMETS.' ],
+            67 => [ 'name'=>'Comet7',  'points'=>4, 'ability'=>'DRAW 1 CARD.' ],
+            68 => [ 'name'=>'Comet8',  'points'=>2, 'ability'=>'DRAW 2 CARDS.' ],
+            69 => [ 'name'=>'Comet9',  'points'=>1, 'ability'=>'DRAW A CARD and then DRAFT A CARD.' ],
+            70 => [ 'name'=>'Comet10', 'points'=>2, 'ability'=>'DRAW A CARD and then PLAY A CARD.' ],
+            71 => [ 'name'=>'Comet11', 'points'=>1, 'ability'=>'DRAW A CARD for EACH MOON orbiting adjacent planet.' ],
+            72 => [ 'name'=>'Comet12', 'points'=>1, 'ability'=>'DRAW A CARD for each RING adjacent planet has.' ],
+            73 => [ 'name'=>'Comet13', 'points'=>3, 'ability'=>'DRAW A CARD for every two COMETS.' ],
+            74 => [ 'name'=>'Comet14', 'points'=>2, 'ability'=>'DRAW the top card of the discard pile.' ],
+            75 => [ 'name'=>'Comet15', 'points'=>0, 'ability'=>'DRAW the top three cards of the discard pile.' ],
+            76 => [ 'name'=>'Comet16', 'points'=>1, 'ability'=>'DRAW the top two cards of the discard pile.' ],
+            77 => [ 'name'=>'Comet17', 'points'=>2, 'ability'=>'Place a PLANET card from the Solar Row into your Solar System.' ],
+            78 => [ 'name'=>'Comet18', 'points'=>1, 'ability'=>'PLAY 2 CARDS.' ],
+            79 => [ 'name'=>'Comet19', 'points'=>0, 'ability'=>'PLAY A CARD for each MOON orbiting adjacent planet.' ],
+            80 => [ 'name'=>'Comet20', 'points'=>0, 'ability'=>'PLAY A CARD for each RING adjacent planet has.' ],
+            81 => [ 'name'=>'Comet21', 'points'=>2, 'ability'=>'PLAY A CARD for every two COMETS.' ],
+            82 => [ 'name'=>'Comet22', 'points'=>3, 'ability'=>'PLAY A CARD.' ],
+            83 => [ 'name'=>'Comet23', 'points'=>2, 'ability'=>'PLAY up to TWO PLANETS.' ],
+            84 => [ 'name'=>'Comet24', 'points'=>2, 'ability'=>'REFRESH A SUN ABILITY.' ],
+            85 => [ 'name'=>'Comet25', 'points'=>2, 'ability'=>'SOLAR FLARE and then DRAFT A CARD.' ],
             ],
             //declare the 25 moons in base deck
         'moon' => [
@@ -703,11 +703,11 @@ class Game extends \Bga\GameFramework\Table
                 $this->grantPlayAction($playerId, 1);
                 break;
             
-            case 63: // Comet3: DRAFT A CARD for each bonus token (TODO: implement bonus token counting)
+            case 63: // Comet3: DRAFT A CARD for each bonus token you currently hold (TODO: implement bonus token counting)
                 $this->grantDraftAction($playerId, 1);
                 break;
             
-            case 64: // Comet4: DRAFT A CARD for each MOON orbiting adjacent planets (TODO: implement moon counting)
+            case 64: // Comet4: DRAFT A CARD for each MOON orbiting adjacent planet (TODO: implement moon counting)
                 $this->grantDraftAction($playerId, 1);
                 break;
             
@@ -715,90 +715,93 @@ class Game extends \Bga\GameFramework\Table
                 $this->grantDraftAction($playerId, 1);
                 break;
             
-            case 66: // Comet6: PLAY A CARD of cost 1 or less from your discard
-                $this->grantPlayAction($playerId, 1);
+            case 66: // Comet6: DRAFT A CARD for every two COMETS (TODO: implement comet counting)
+                $this->grantDraftAction($playerId, 1);
                 break;
             
-            case 67: // Comet7: Return a played MOON to your hand, then PLAY A MOON
-                $this->grantPlayAction($playerId, 1);
-                break;
-            
-            case 68: // Comet8: Choose a planet: it CANNOT HAVE MOONS for the rest of game
-                // No actions granted
-                break;
-            
-            case 69: // Comet9: Discard 1 card: GAIN 2 POINTS
-                // No actions granted (points are handled elsewhere)
-                break;
-            
-            case 70: // Comet10: Move one of your MOONS to another planet
-                // No actions granted
-                break;
-            
-            case 71: // Comet11: PLAY any SMALL planet from your hand for free
-                $this->grantPlayAction($playerId, 1);
-                break;
-            
-            case 72: // Comet12: Choose ANY planet: its POINT VALUE becomes 2
-                // No actions granted
-                break;
-            
-            case 73: // Comet13: STEAL 1 MOON from another player (if possible)
-                // No actions granted
-                break;
-            
-            case 74: // Comet14: DRAW 3 CARDS, keep 1, discard the rest
-                $this->grantDrawAction($playerId, 3);
-                break;
-            
-            case 75: // Comet15: Choose an OPPONENT: they DISCARD 1 CARD
-                // No actions granted
-                break;
-            
-            case 76: // Comet16: If adjacent to a BLUE planet: GAIN 3 POINTS
-                // No actions granted (points are handled elsewhere)
-                break;
-            
-            case 77: // Comet17: If adjacent to a GREEN planet: GAIN 3 POINTS
-                // No actions granted (points are handled elsewhere)
-                break;
-            
-            case 78: // Comet18: If adjacent to a RED planet: GAIN 3 POINTS
-                // No actions granted (points are handled elsewhere)
-                break;
-            
-            case 79: // Comet19: Score DOUBLE POINTS for this COMET
-                // No actions granted (points are handled elsewhere)
-                break;
-            
-            case 80: // Comet20: SWAP two adjacent planets in your system
-                // No actions granted
-                break;
-            
-            case 81: // Comet21: Move a planet in your system to a new location
-                // No actions granted
-                break;
-            
-            case 82: // Comet22: Reveal top 3 cards of deck: take 1, discard the others
+            case 67: // Comet7: DRAW 1 CARD
                 $this->grantDrawAction($playerId, 1);
                 break;
             
-            case 83: // Comet23: PLAY a MEDIUM planet for free
+            case 68: // Comet8: DRAW 2 CARDS
+                $this->grantDrawAction($playerId, 2);
+                break;
+            
+            case 69: // Comet9: DRAW A CARD and then DRAFT A CARD
+                $this->grantDrawAction($playerId, 1);
+                $this->grantDraftAction($playerId, 1);
+                break;
+            
+            case 70: // Comet10: DRAW A CARD and then PLAY A CARD
+                $this->grantDrawAction($playerId, 1);
                 $this->grantPlayAction($playerId, 1);
                 break;
             
-            case 84: // Comet24: Each opponent discards 1 MOON (if they have one)
-                // No actions granted
+            case 71: // Comet11: DRAW A CARD for EACH MOON orbiting adjacent planet (TODO: implement moon counting)
+                $this->grantDrawAction($playerId, 1);
                 break;
             
-            case 85: // Comet25: Copy the effect of the LAST PLAYED COMET
-                // TODO: This needs special handling to copy the last comet's effect
+            case 72: // Comet12: DRAW A CARD for each RING adjacent planet has (TODO: implement ring counting)
+                $this->grantDrawAction($playerId, 1);
+                break;
+            
+            case 73: // Comet13: DRAW A CARD for every two COMETS (TODO: implement comet counting)
+                $this->grantDrawAction($playerId, 1);
+                break;
+            
+            case 74: // Comet14: DRAW the top card of the discard pile
+                // Special case: drawing from discard, not deck - may need special handling
+                $this->grantDrawAction($playerId, 1);
+                break;
+            
+            case 75: // Comet15: DRAW the top three cards of the discard pile
+                // Special case: drawing from discard, not deck - may need special handling
+                $this->grantDrawAction($playerId, 3);
+                break;
+            
+            case 76: // Comet16: DRAW the top two cards of the discard pile
+                // Special case: drawing from discard, not deck - may need special handling
+                $this->grantDrawAction($playerId, 2);
+                break;
+            
+            case 77: // Comet17: Place a PLANET card from the Solar Row into your Solar System
+                // This is a special action - may need custom handling
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 78: // Comet18: PLAY 2 CARDS
+                $this->grantPlayAction($playerId, 2);
+                break;
+            
+            case 79: // Comet19: PLAY A CARD for each MOON orbiting adjacent planet (TODO: implement moon counting)
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 80: // Comet20: PLAY A CARD for each RING adjacent planet has (TODO: implement ring counting)
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 81: // Comet21: PLAY A CARD for every two COMETS (TODO: implement comet counting)
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 82: // Comet22: PLAY A CARD
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 83: // Comet23: PLAY up to TWO PLANETS
+                $this->grantPlayAction($playerId, 2);
+                break;
+            
+            case 84: // Comet24: REFRESH A SUN ABILITY
+                // Special ability - may need custom handling
+                break;
+            
+            case 85: // Comet25: SOLAR FLARE and then DRAFT A CARD
+                // Special ability (SOLAR FLARE) + DRAFT A CARD
+                $this->grantDraftAction($playerId, 1);
                 break;
         }
     }
-
-    /*************************************************
-     * DISPATCH ABILITY BASED ON CARD TYPE + ARG     *************************************************/
-
 
 }

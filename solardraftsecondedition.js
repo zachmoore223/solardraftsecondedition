@@ -460,7 +460,7 @@ define([
       /*******************************
        *         PLAYER PANELS        *
        *******************************/
-      this.counters = {}; // make sure this exists before the loop
+      this.counters = {};
       // Player boards (keep it simple for now)
       for (var playerId in gamedatas.players) {
         if (!gamedatas.players.hasOwnProperty(playerId)) continue;
@@ -473,6 +473,28 @@ define([
             "beforeend",
             `
                 <div class="player-counters-grid">
+
+          <!-- NEW: action counters -->
+
+          <div class="counter-block">
+              <span class="counter-label">Open:</span>
+              <span id="open-actions-counter-${playerId}" class="counter-value"></span>
+          </div>
+
+          <div class="counter-block">
+              <span class="counter-label">Draft:</span>
+              <span id="draft-actions-counter-${playerId}" class="counter-value"></span>
+          </div>
+
+          <div class="counter-block">
+              <span class="counter-label">Draw:</span>
+              <span id="draw-actions-counter-${playerId}" class="counter-value"></span>
+          </div>
+
+          <div class="counter-block">
+              <span class="counter-label">Play:</span>
+              <span id="play-actions-counter-${playerId}" class="counter-value"></span>
+          </div>
                 
                     <div class="counter-block">
                         <img class="counter-icon" src="${g_gamethemeurl}img/counter-bluePlanet.png"/>
@@ -520,7 +542,7 @@ define([
         }
 
         //
-        // CORRECT COUNTER DEFINITIONS
+        // COUNTER DEFINITIONS
         //
         this.counters[playerId] = {};
         const counterList = [
