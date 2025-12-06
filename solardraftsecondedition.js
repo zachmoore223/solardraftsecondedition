@@ -630,7 +630,24 @@ define([
 
       switch (stateName) {
         case "PlayerTurn":
-          // Normal turn UI
+          // Update action counters when entering PlayerTurn state
+          if (args) {
+            const activePlayerId = this.getActivePlayerId();
+            if (activePlayerId && this.counters && this.counters[activePlayerId]) {
+              if (args.open_actions !== undefined) {
+                this.counters[activePlayerId].open_actions.setValue(args.open_actions);
+              }
+              if (args.draft_actions !== undefined) {
+                this.counters[activePlayerId].draft_actions.setValue(args.draft_actions);
+              }
+              if (args.draw_actions !== undefined) {
+                this.counters[activePlayerId].draw_actions.setValue(args.draw_actions);
+              }
+              if (args.play_actions !== undefined) {
+                this.counters[activePlayerId].play_actions.setValue(args.play_actions);
+              }
+            }
+          }
           break;
 
         case "MoonPlacement": // Changed from "moonPlacement"
@@ -660,6 +677,25 @@ define([
     *******************************/
     onUpdateActionButtons: function (stateName, args) {
       console.log("onUpdateActionButtons: " + stateName, args);
+
+      // Update action counters when action buttons are updated (for all players, not just active)
+      if (stateName === "PlayerTurn" && args) {
+        const activePlayerId = this.getActivePlayerId();
+        if (activePlayerId && this.counters && this.counters[activePlayerId]) {
+          if (args.open_actions !== undefined) {
+            this.counters[activePlayerId].open_actions.setValue(args.open_actions);
+          }
+          if (args.draft_actions !== undefined) {
+            this.counters[activePlayerId].draft_actions.setValue(args.draft_actions);
+          }
+          if (args.draw_actions !== undefined) {
+            this.counters[activePlayerId].draw_actions.setValue(args.draw_actions);
+          }
+          if (args.play_actions !== undefined) {
+            this.counters[activePlayerId].play_actions.setValue(args.play_actions);
+          }
+        }
+      }
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
@@ -926,6 +962,10 @@ define([
       const newValue = notif.newValue;
       const counter = notif.counter;
       const newRingCount = notif.newRingCount;
+      const open_actions = notif.open_actions
+      const draft_actions = notif.draft_actions;
+      const draw_actions = notif.draw_actions;
+      const play_actions = notif.play_actions;
       
       // Remove from hand if it's the current player's card
       if (playerId == this.player_id) {
@@ -975,17 +1015,17 @@ define([
 
       // Update action counters after card is played
       if (this.counters && this.counters[playerId]) {
-        if (notif.open_actions !== undefined) {
-          this.counters[playerId].open_actions.setValue(notif.open_actions);
+        if (open_actions !== undefined) {
+          this.counters[playerId].open_actions.setValue(open_actions);
         }
-        if (notif.draft_actions !== undefined) {
-          this.counters[playerId].draft_actions.setValue(notif.draft_actions);
+        if (draft_actions !== undefined) {
+          this.counters[playerId].draft_actions.setValue(draft_actions);
         }
-        if (notif.draw_actions !== undefined) {
-          this.counters[playerId].draw_actions.setValue(notif.draw_actions);
+        if (draw_actions !== undefined) {
+          this.counters[playerId].draw_actions.setValue(draw_actions);
         }
-        if (notif.play_actions !== undefined) {
-          this.counters[playerId].play_actions.setValue(notif.play_actions);
+        if (play_actions !== undefined) {
+          this.counters[playerId].play_actions.setValue(play_actions);
         }
       }
 
@@ -1000,6 +1040,8 @@ define([
     *             DRAW             *
     *******************************/
     notif_deckDraw: async function (notif) {
+      const draw_actions = notif.draw_actions;
+
       console.log("notif_deckDraw", notif);
 
       // --- UPDATE THE COUNT ---
@@ -1023,6 +1065,11 @@ define([
         deckTopElem.remove();
       }
 
+      // Update DRAW counters after card is drawn
+     if (draw_actions !== undefined) {
+          this.counters[playerId].draw_actions.setValue(draw_actions);
+      }
+
       // Add drawn card to hand
       await this.handStock.addCard(notif.deckTop);
     },
@@ -1036,6 +1083,7 @@ define([
       const slot = notif.slot; // 0,1,2
       const card = notif.card;
       const playerId = notif.player_id;
+      const draft_actions = notif.draft_actions;
 
       // --- UPDATE THE COUNT ---
       if (notif.cardsRemaining !== undefined) {
@@ -1068,6 +1116,12 @@ define([
           await this.solarRow2.addCard(notif.deckTop, { index: slot });
         }
       }
+
+    // Update DRAFT counters after card is drafted
+     if (draft_actions !== undefined) {
+      this.counters[playerId].draft_actions.setValue(draft_actions);
+    }
+
 
       // If it's the current player, add to hand
       if (playerId == this.player_id) {
