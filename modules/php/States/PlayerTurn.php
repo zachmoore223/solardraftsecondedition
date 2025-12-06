@@ -38,7 +38,15 @@ class PlayerTurn extends GameState
     public function getArgs(): array
     {
         // Get some values from the current game situation from the database.
-        $activePlayerId = $this->game->getActivePlayerId();
+        $activePlayerId = (int) $this->game->getActivePlayerId();
+
+        // Calculate total actions
+        $totalActions = $this->getTotalActions($activePlayerId);
+        
+        // If this is the start of their turn (no actions), give them 1 open action
+        if ($totalActions == 0) {
+            $this->game->open_actions->set($activePlayerId, 1);
+        }
 
         // Check if player has any planets
         $hasPlanets = (int) $this->game->getUniqueValueFromDB("
@@ -50,8 +58,67 @@ class PlayerTurn extends GameState
             ") > 0;
 
         return [
-            "mustPlayPlanet" => !$hasPlanets  // Add this flag
+            "mustPlayPlanet" => !$hasPlanets,
+            'open_actions' => $this->game->open_actions->get($activePlayerId),
+            'draft_actions' => $this->game->draft_actions->get($activePlayerId),
+            'draw_actions' => $this->game->draw_actions->get($activePlayerId),
+            'play_actions' => $this->game->play_actions->get($activePlayerId),
+            'total_actions' => $this->getTotalActions($activePlayerId)
         ];
+    }
+
+    private function getTotalActions(int $playerId): int
+    {
+        return $this->game->open_actions->get($playerId)
+            + $this->game->draft_actions->get($playerId)
+            + $this->game->draw_actions->get($playerId)
+            + $this->game->play_actions->get($playerId);
+    }
+
+    private function canDraft(int $playerId): bool
+    {
+        return $this->game->open_actions->get($playerId) > 0
+            || $this->game->draft_actions->get($playerId) > 0;
+    }
+
+    private function canDraw(int $playerId): bool
+    {
+        return $this->game->open_actions->get($playerId) > 0
+            || $this->game->draw_actions->get($playerId) > 0;
+    }
+
+    private function canPlay(int $playerId): bool
+    {
+        return $this->game->open_actions->get($playerId) > 0
+            || $this->game->play_actions->get($playerId) > 0;
+    }
+
+    private function consumeAction(int $playerId, string $actionType)
+    {
+        // Try to use specific action first, then fall back to open action
+        switch ($actionType) {
+            case 'draft':
+                if ($this->game->draft_actions->get($playerId) > 0) {
+                    $this->game->draft_actions->inc($playerId, -1);
+                } else {
+                    $this->game->open_actions->inc($playerId, -1);
+                }
+                break;
+            case 'draw':
+                if ($this->game->draw_actions->get($playerId) > 0) {
+                    $this->game->draw_actions->inc($playerId, -1);
+                } else {
+                    $this->game->open_actions->inc($playerId, -1);
+                }
+                break;
+            case 'play':
+                if ($this->game->play_actions->get($playerId) > 0) {
+                    $this->game->play_actions->inc($playerId, -1);
+                } else {
+                    $this->game->open_actions->inc($playerId, -1);
+                }
+                break;
+        }
     }
 
     /*******************
@@ -59,15 +126,21 @@ class PlayerTurn extends GameState
      *******************/
     #[PossibleAction]
     public function actPlayCard(int $card_id, int $activePlayerId, ?int $target_planet_id = null)
-    {
+    {   
+        // Check if player can play
+        if (!$this->canPlay($activePlayerId)) {
+            throw new UserException("You don't have any actions to play a card");
+        }
         // Take card from player's hand
         $card = $this->game->cards->getCard($card_id);
         $newRingCount = 0;
         $newValue = 0;
 
-
         // Enrich before sending
         $card = $this->game->enrichCard($card);
+
+        //Get any actions granted from card and add to current player's action count
+        $grantedActions =  $this->game->getCardActions($card, $activePlayerId);
 
         // Get all planets currently in tableau (before adding this card)
         $planet_order = array_values(
@@ -212,6 +285,7 @@ class PlayerTurn extends GameState
             $newValue = $this->game->moon_count->get($activePlayerId);
             $counter = 'moon';
         }
+
         /*debuigging info */
         error_log("planet_order BEFORE move: " . json_encode($planet_order));
         error_log("planet_index = " . $planet_index);
@@ -235,7 +309,17 @@ class PlayerTurn extends GameState
             ]
         );
 
-        return PlayerTurn::class;
+        // Consume the action
+        $this->consumeAction($activePlayerId, 'play');
+
+
+        // After action, check if player has more actions
+        if ($this->getTotalActions($activePlayerId) > 0) {
+            return PlayerTurn::class;
+        } else {
+            return NextPlayer::class;
+        }
+
     }
 
     /*******************
@@ -244,6 +328,11 @@ class PlayerTurn extends GameState
     #[PossibleAction]
     public function actDraftCard(int $card_id, int $row, int $slot, int $activePlayerId)
     {
+
+        if (!$this->canDraft($activePlayerId)) {
+            throw new UserException("You don't have any actions to draft a card");
+        }
+
         $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
         $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
         $card = $this->game->cards->getCard($card_id);
@@ -268,8 +357,15 @@ class PlayerTurn extends GameState
             'slot' => $slot
         ]);
 
-        // Advance state → Let player play or pass
-        return PlayerTurn::class;
+        // Consume the action
+        $this->consumeAction($activePlayerId, 'draft');
+
+        // After action, check if player has more actions
+        if ($this->getTotalActions($activePlayerId) > 0) {
+            return PlayerTurn::class;
+        } else {
+            return NextPlayer::class;
+        }
     }
 
     /*******************
@@ -278,6 +374,11 @@ class PlayerTurn extends GameState
     #[PossibleAction]
     public function actDrawCard(int $activePlayerId)
     {
+        // Check if player can draw
+        if (!$this->canDraw($activePlayerId)) {
+            throw new UserException("You don't have any actions to draw a card");
+        }
+
         $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
         $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
 
@@ -308,7 +409,15 @@ class PlayerTurn extends GameState
         );
 
 
-        return PlayerTurn::class;
+        // Consume the action
+        $this->consumeAction($activePlayerId, 'draw');
+
+        // After action, check if player has more actions
+        if ($this->getTotalActions($activePlayerId) > 0) {
+            return PlayerTurn::class;
+        } else {
+            return NextPlayer::class;
+        }
     }
 
 
@@ -317,16 +426,24 @@ class PlayerTurn extends GameState
      *******************/
     #[PossibleAction]
     public function actPass(int $activePlayerId)
-    {
+    {   
+        // Clear all actions
+        $this->game->open_actions->set($activePlayerId, 0);
+        $this->game->draft_actions->set($activePlayerId, 0);
+        $this->game->draw_actions->set($activePlayerId, 0);
+        $this->game->play_actions->set($activePlayerId, 0);
+
         // Notify all players about the choice to pass.
         $this->notify->all("pass", clienttranslate('${player_name} passes'), [
             "player_id" => $activePlayerId,
             "player_name" => $this->game->getPlayerNameById($activePlayerId), // remove this line if you uncomment notification decorator
         ]);
+
+
+
         // at the end of the action, move to the next state
         return NextPlayer::class;
     }
-
 
 
     /**

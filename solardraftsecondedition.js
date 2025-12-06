@@ -474,26 +474,24 @@ define([
             `
                 <div class="player-counters-grid">
 
-          <!-- NEW: action counters -->
-
-          <div class="counter-block">
-              <span class="counter-label">Open:</span>
-              <span id="open-actions-counter-${playerId}" class="counter-value"></span>
+          <div class="counter-block-actions">
+              <span class="counter-label-actions">Open:</span>
+              <span id="open-actions-counter-${playerId}" class="counter-value-actions"></span>
           </div>
 
-          <div class="counter-block">
-              <span class="counter-label">Draft:</span>
-              <span id="draft-actions-counter-${playerId}" class="counter-value"></span>
+          <div class="counter-block-actions">
+              <span class="counter-label-actions">Draft:</span>
+              <span id="draft-actions-counter-${playerId}" class="counter-value-actions"></span>
           </div>
 
-          <div class="counter-block">
-              <span class="counter-label">Draw:</span>
-              <span id="draw-actions-counter-${playerId}" class="counter-value"></span>
+          <div class="counter-block-actions">
+              <span class="counter-label-actions">Draw:</span>
+              <span id="draw-actions-counter-${playerId}" class="counter-value-actions"></span>
           </div>
 
-          <div class="counter-block">
-              <span class="counter-label">Play:</span>
-              <span id="play-actions-counter-${playerId}" class="counter-value"></span>
+          <div class="counter-block-actions">
+              <span class="counter-label-actions">Play:</span>
+              <span id="play-actions-counter-${playerId}" class="counter-value-actions"></span>
           </div>
                 
                     <div class="counter-block">

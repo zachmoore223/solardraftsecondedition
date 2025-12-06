@@ -324,8 +324,25 @@ box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
     object-fit: contain;
 }
 
+.counter-block-actions {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+}
+
 /* Numbers next to icons */
 .counter-value {
     font-size: 20px;
+    line-height: 1;
+}
+
+.counter-value-actions {
+    font-size: 15px;
+    line-height: 1;
+    font-weight: bold;
+}
+
+.counter-label-actions {
+    font-size: 15px;
     line-height: 1;
 }
