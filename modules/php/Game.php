@@ -33,6 +33,10 @@ class Game extends \Bga\GameFramework\Table
     public PlayerCounter $comet_count;
     public PlayerCounter $moon_count;
     public PlayerCounter $ring_count;
+    public PlayerCounter $draft_actions;
+    public PlayerCounter $draw_actions;
+    public PlayerCounter $play_actions;
+    public PlayerCounter $open_actions;
     public $planetOrder = [];   
     public $cards;
     const LOCATION_DECK = 'deck';
@@ -192,7 +196,12 @@ class Game extends \Bga\GameFramework\Table
         $this->ring_count = $this->counterFactory->createPlayerCounter('ring_count');
         $this->cards = $this->deckFactory->createDeck('card');
         $this->cards->init('card');
-
+        // ACTION COUNTERS
+        $this->open_actions = $this->counterFactory->createPlayerCounter('open_actions');
+        $this->draft_actions = $this->counterFactory->createPlayerCounter('draft_actions');
+        $this->draw_actions = $this->counterFactory->createPlayerCounter('draw_actions');
+        $this->play_actions = $this->counterFactory->createPlayerCounter('play_actions');
+    
         /* example of notification decorator.
         // automatically complete notification args when needed
         $this->notify->addDecorator(function(string $message, array $args) {
@@ -284,6 +293,10 @@ class Game extends \Bga\GameFramework\Table
             $this->comet_count->fillResult($result);
             $this->moon_count->fillResult($result);
             $this->ring_count->fillResult($result);
+            $this->open_actions->fillResult($result);
+            $this->draft_actions->fillResult($result);
+            $this->draw_actions->fillResult($result);
+            $this->play_actions->fillResult($result);
 
             // ----------------------
             // TABLEAU (planet / moon / comet)
@@ -388,7 +401,11 @@ class Game extends \Bga\GameFramework\Table
         $this->tan_planet_count->initDb(array_keys($players));
         $this->comet_count->initDb(array_keys($players));
         $this->moon_count->initDb(array_keys($players));
-        $this->ring_count->initDb(array_keys($players));                     
+        $this->ring_count->initDb(array_keys($players)); 
+        $this->open_actions->initDb(array_keys($players));
+        $this->draft_actions->initDb(array_keys($players));
+        $this->draw_actions->initDb(array_keys($players));
+        $this->play_actions->initDb(array_keys($players));                    
         // Set the colors of the players with HTML color code. The default below is red/green/blue/orange/brown. The
         // number of colors defined here must correspond to the maximum number of players allowed for the gams.
         $gameinfos = $this->getGameinfos();
@@ -593,13 +610,195 @@ class Game extends \Bga\GameFramework\Table
     }
 
     /*************************************************
-     * ABILITY ROUTING TABLE
+     * ACTION HELPERS
      *************************************************/
+    // In Game.php, add helper functions:
 
+    public function grantDraftAction(int $playerId, int $count = 1)
+    {
+        $this->draft_actions->inc($playerId, $count);
+        
+        $this->notify->all(
+            'actionGranted',
+            clienttranslate('${player_name} gains ${count} draft action(s)'),
+            [
+                'player_id' => $playerId,
+                'player_name' => $this->getPlayerNameById($playerId),
+                'count' => $count,
+                'action_type' => 'draft',
+                'new_value' => $this->draft_actions->get($playerId)
+            ]
+        );
+    }
+
+    public function grantDrawAction(int $playerId, int $count = 1)
+    {
+        $this->draw_actions->inc($playerId, $count);
+        
+        $this->notify->all(
+            'actionGranted',
+            clienttranslate('${player_name} gains ${count} draw action(s)'),
+            [
+                'player_id' => $playerId,
+                'player_name' => $this->getPlayerNameById($playerId),
+                'count' => $count,
+                'action_type' => 'draw',
+                'new_value' => $this->draw_actions->get($playerId)
+            ]
+        );
+    }
+
+    public function grantPlayAction(int $playerId, int $count = 1)
+    {
+        $this->play_actions->inc($playerId, $count);
+        
+        $this->notify->all(
+            'actionGranted',
+            clienttranslate('${player_name} gains ${count} play action(s)'),
+            [
+                'player_id' => $playerId,
+                'player_name' => $this->getPlayerNameById($playerId),
+                'count' => $count,
+                'action_type' => 'play',
+                'new_value' => $this->play_actions->get($playerId)
+            ]
+        );
+    }
+
+    public function grantOpenAction(int $playerId, int $count = 1)
+    {
+        $this->open_actions->inc($playerId, $count);
+        
+        $this->notify->all(
+            'actionGranted',
+            clienttranslate('${player_name} gains ${count} action(s)'),
+            [
+                'player_id' => $playerId,
+                'player_name' => $this->getPlayerNameById($playerId),
+                'count' => $count,
+                'action_type' => 'open',
+                'new_value' => $this->open_actions->get($playerId)
+            ]
+        );
+    }
+
+    //All possible Card Actions
+    public function getCardActions(array $card, int $playerId)
+    {
+        // Only process comets
+        if ($card['type'] !== 'comet') {
+            return;
+        }
+
+        $cardNum = $card['type_arg'];
+
+        // Process based on comet number (61-85)
+        switch ($cardNum) {
+            case 61: // Comet1: DRAFT 2 CARDS
+                $this->grantDraftAction($playerId, 2);
+                break;
+            
+            case 62: // Comet2: DRAFT A CARD and then PLAY A CARD
+                $this->grantDraftAction($playerId, 1);
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 63: // Comet3: DRAFT A CARD for each bonus token (TODO: implement bonus token counting)
+                $this->grantDraftAction($playerId, 1);
+                break;
+            
+            case 64: // Comet4: DRAFT A CARD for each MOON orbiting adjacent planets (TODO: implement moon counting)
+                $this->grantDraftAction($playerId, 1);
+                break;
+            
+            case 65: // Comet5: DRAFT A CARD for each RING adjacent planet has (TODO: implement ring counting)
+                $this->grantDraftAction($playerId, 1);
+                break;
+            
+            case 66: // Comet6: PLAY A CARD of cost 1 or less from your discard
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 67: // Comet7: Return a played MOON to your hand, then PLAY A MOON
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 68: // Comet8: Choose a planet: it CANNOT HAVE MOONS for the rest of game
+                // No actions granted
+                break;
+            
+            case 69: // Comet9: Discard 1 card: GAIN 2 POINTS
+                // No actions granted (points are handled elsewhere)
+                break;
+            
+            case 70: // Comet10: Move one of your MOONS to another planet
+                // No actions granted
+                break;
+            
+            case 71: // Comet11: PLAY any SMALL planet from your hand for free
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 72: // Comet12: Choose ANY planet: its POINT VALUE becomes 2
+                // No actions granted
+                break;
+            
+            case 73: // Comet13: STEAL 1 MOON from another player (if possible)
+                // No actions granted
+                break;
+            
+            case 74: // Comet14: DRAW 3 CARDS, keep 1, discard the rest
+                $this->grantDrawAction($playerId, 3);
+                break;
+            
+            case 75: // Comet15: Choose an OPPONENT: they DISCARD 1 CARD
+                // No actions granted
+                break;
+            
+            case 76: // Comet16: If adjacent to a BLUE planet: GAIN 3 POINTS
+                // No actions granted (points are handled elsewhere)
+                break;
+            
+            case 77: // Comet17: If adjacent to a GREEN planet: GAIN 3 POINTS
+                // No actions granted (points are handled elsewhere)
+                break;
+            
+            case 78: // Comet18: If adjacent to a RED planet: GAIN 3 POINTS
+                // No actions granted (points are handled elsewhere)
+                break;
+            
+            case 79: // Comet19: Score DOUBLE POINTS for this COMET
+                // No actions granted (points are handled elsewhere)
+                break;
+            
+            case 80: // Comet20: SWAP two adjacent planets in your system
+                // No actions granted
+                break;
+            
+            case 81: // Comet21: Move a planet in your system to a new location
+                // No actions granted
+                break;
+            
+            case 82: // Comet22: Reveal top 3 cards of deck: take 1, discard the others
+                $this->grantDrawAction($playerId, 1);
+                break;
+            
+            case 83: // Comet23: PLAY a MEDIUM planet for free
+                $this->grantPlayAction($playerId, 1);
+                break;
+            
+            case 84: // Comet24: Each opponent discards 1 MOON (if they have one)
+                // No actions granted
+                break;
+            
+            case 85: // Comet25: Copy the effect of the LAST PLAYED COMET
+                // TODO: This needs special handling to copy the last comet's effect
+                break;
+        }
+    }
 
     /*************************************************
-     * DISPATCH ABILITY BASED ON CARD TYPE + ARG
-     *************************************************/
+     * DISPATCH ABILITY BASED ON CARD TYPE + ARG     *************************************************/
 
 
 }

@@ -564,6 +564,26 @@ define([
             id: `hand-counter-${playerId}`,
             default: gamedatas.cardsInHand[playerId] ?? 0,
           },
+          {
+              name: "open_actions",
+              id: `open-actions-counter-${playerId}`,
+              default: gamedatas.players[playerId].open_actions ?? 0,
+          },
+          {
+              name: "draft_actions",
+              id: `draft-actions-counter-${playerId}`,
+              default: gamedatas.players[playerId].draft_actions ?? 0,
+          },
+          {
+              name: "draw_actions",
+              id: `draw-actions-counter-${playerId}`,
+              default: gamedatas.players[playerId].draw_actions ?? 0,
+          },
+          {
+              name: "play_actions",
+              id: `play-actions-counter-${playerId}`,
+              default: gamedatas.players[playerId].play_actions ?? 0,
+          },
         ];
 
         for (let entry of counterList) {
@@ -1024,6 +1044,26 @@ define([
     notif_pass: function (notif) {
       console.log("notif_pass", notif);
       // Nothing to do visually for a pass
+    },
+
+    /*******************************
+    *        ACTION GRANTED        *
+    *******************************/
+    notif_actionGranted: function (notif) {
+      console.log("notif_actionGranted", notif);
+      const playerId = notif.player_id;
+      const actionType = notif.action_type;
+      const newValue = notif.new_value;
+
+      // Update the appropriate action counter
+      if (this.counters && this.counters[playerId]) {
+        const counterName = actionType + "_actions";
+        if (this.counters[playerId][counterName]) {
+          this.counters[playerId][counterName].setValue(newValue);
+        } else {
+          console.warn("Action counter not found:", counterName, "for player", playerId);
+        }
+      }
     },
 
   });
