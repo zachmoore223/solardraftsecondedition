@@ -131,6 +131,7 @@ class PlayerTurn extends GameState
         if (!$this->canPlay($activePlayerId)) {
             throw new UserException("You don't have any actions to play a card");
         }
+
         // Take card from player's hand
         $card = $this->game->cards->getCard($card_id);
         $newRingCount = 0;
@@ -139,8 +140,8 @@ class PlayerTurn extends GameState
         // Enrich before sending
         $card = $this->game->enrichCard($card);
 
-        //Get any actions granted from card and add to current player's action count
-        $grantedActions =  $this->game->getCardActions($card, $activePlayerId);
+        //Add any actions granted from card to current player's action count
+        $this->game->getCardActions($card, $activePlayerId);
 
         // Get all planets currently in tableau (before adding this card)
         $planet_order = array_values(
@@ -169,7 +170,7 @@ class PlayerTurn extends GameState
         $this->game->cards->moveCard($card_id, 'tableau', $activePlayerId);
 
         //---------------------------------------
-        // Determine parent planet / slot (REAL BGA VERSION FOR STATE CLASS)
+        // Determine parent planet / slot ///////
         //---------------------------------------
         $parent_id = null;
         $parent_slot = null;
@@ -180,7 +181,6 @@ class PlayerTurn extends GameState
             $parent_slot = null;
         }
 
-        // MOONS attach to most recent planet
         // If it's a moon, transition to moon placement state instead
         if ($card['type'] === 'moon') {
             // Store the moon card ID in a global variable so the next state knows which card
@@ -188,8 +188,8 @@ class PlayerTurn extends GameState
             return MoonPlacement::class;
         }
 
-
         // COMETS attach to the most recent planet
+        // and cannot be placed next to another comet
         if ($card['type'] === 'comet') {
 
             // 1. Find latest planet
@@ -237,6 +237,8 @@ class PlayerTurn extends GameState
         $cardColor = $card['color'];
         $cardRings = $card['rings'];
 
+
+        //Increment appropriate counter for card played
         if ($card['type'] === 'planet') {
 
             $cardColor = $card['color'];
@@ -286,12 +288,8 @@ class PlayerTurn extends GameState
             $counter = 'moon';
         }
 
-        /*debuigging info */
-        error_log("planet_order BEFORE move: " . json_encode($planet_order));
-        error_log("planet_index = " . $planet_index);
-        error_log("parent_id = " . $parent_id . " parent_slot = " . $parent_slot);
-        error_log("card being played: " . json_encode($card));
-
+        // Consume the action BEFORE notification (so we can include updated action counts)
+        $this->consumeAction($activePlayerId, 'play');
 
         // Notify all players
         $this->notify->all(
@@ -305,15 +303,16 @@ class PlayerTurn extends GameState
                 'newValue' => $newValue,
                 'counter'   => $counter,
                 'newRingCount'   => $newRingCount,
-                'planet_order' => $planet_order
+                'planet_order' => $planet_order,
+                'open_actions' => $this->game->open_actions->get($activePlayerId),
+                'draft_actions' => $this->game->draft_actions->get($activePlayerId),
+                'draw_actions' => $this->game->draw_actions->get($activePlayerId),
+                'play_actions' => $this->game->play_actions->get($activePlayerId),
             ]
         );
 
-        // Consume the action
-        $this->consumeAction($activePlayerId, 'play');
-
-
         // After action, check if player has more actions
+        // If not, move to next players turn *************TO DO: How to handle turns with always having possible sun ability action????
         if ($this->getTotalActions($activePlayerId) > 0) {
             return PlayerTurn::class;
         } else {

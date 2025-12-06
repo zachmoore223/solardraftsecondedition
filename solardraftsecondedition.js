@@ -926,6 +926,7 @@ define([
       const newValue = notif.newValue;
       const counter = notif.counter;
       const newRingCount = notif.newRingCount;
+      
       // Remove from hand if it's the current player's card
       if (playerId == this.player_id) {
         await this.handStock.removeCard(card);
@@ -970,6 +971,22 @@ define([
 
       if (card.type == "moon") {
         this.counters[playerId].moon.setValue(newValue);
+      }
+
+      // Update action counters after card is played
+      if (this.counters && this.counters[playerId]) {
+        if (notif.open_actions !== undefined) {
+          this.counters[playerId].open_actions.setValue(notif.open_actions);
+        }
+        if (notif.draft_actions !== undefined) {
+          this.counters[playerId].draft_actions.setValue(notif.draft_actions);
+        }
+        if (notif.draw_actions !== undefined) {
+          this.counters[playerId].draw_actions.setValue(notif.draw_actions);
+        }
+        if (notif.play_actions !== undefined) {
+          this.counters[playerId].play_actions.setValue(notif.play_actions);
+        }
       }
 
       // **Update gamedatas.tableau with the new card**

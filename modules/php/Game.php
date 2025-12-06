@@ -202,20 +202,6 @@ class Game extends \Bga\GameFramework\Table
         $this->draw_actions = $this->counterFactory->createPlayerCounter('draw_actions');
         $this->play_actions = $this->counterFactory->createPlayerCounter('play_actions');
     
-        /* example of notification decorator.
-        // automatically complete notification args when needed
-        $this->notify->addDecorator(function(string $message, array $args) {
-            if (isset($args['player_id']) && !isset($args['player_name']) && str_contains($message, '${player_name}')) {
-                $args['player_name'] = $this->getPlayerNameById($args['player_id']);
-            }
-        
-            if (isset($args['card_id']) && !isset($args['card_name']) && str_contains($message, '${card_name}')) {
-                $args['card_name'] = self::$CARD_TYPES[$args['card_id']]['card_name'];
-                $args['i18n'][] = ['card_name'];
-            }
-            
-            return $args;
-        });*/
     }
 
     /**
@@ -407,7 +393,7 @@ class Game extends \Bga\GameFramework\Table
         $this->draw_actions->initDb(array_keys($players));
         $this->play_actions->initDb(array_keys($players));                    
         // Set the colors of the players with HTML color code. The default below is red/green/blue/orange/brown. The
-        // number of colors defined here must correspond to the maximum number of players allowed for the gams.
+        // number of colors defined here must correspond to the maximum number of players allowed for the game.
         $gameinfos = $this->getGameinfos();
         $default_colors = $gameinfos['player_colors'];
 
@@ -749,18 +735,15 @@ class Game extends \Bga\GameFramework\Table
                 $this->grantDrawAction($playerId, 1);
                 break;
             
-            case 74: // Comet14: DRAW the top card of the discard pile
-                // Special case: drawing from discard, not deck - may need special handling
+            case 74: // Comet14: DRAW the top card of the discard pile (TODO: implement discard drawing)
                 $this->grantDrawAction($playerId, 1);
                 break;
             
-            case 75: // Comet15: DRAW the top three cards of the discard pile
-                // Special case: drawing from discard, not deck - may need special handling
+            case 75: // Comet15: DRAW the top three cards of the discard pile (TODO: implement discard drawing)
                 $this->grantDrawAction($playerId, 3);
                 break;
             
-            case 76: // Comet16: DRAW the top two cards of the discard pile
-                // Special case: drawing from discard, not deck - may need special handling
+            case 76: // Comet16: DRAW the top two cards of the discard pile (TODO: implement discard drawing)
                 $this->grantDrawAction($playerId, 2);
                 break;
             
@@ -789,7 +772,7 @@ class Game extends \Bga\GameFramework\Table
                 $this->grantPlayAction($playerId, 1);
                 break;
             
-            case 83: // Comet23: PLAY up to TWO PLANETS : TODO - must only be planet plays
+            case 83: // Comet23: PLAY up to TWO PLANETS (TODO: planet only plays allowed))
                 $this->grantPlayAction($playerId, 2);
                 break;
             
