@@ -353,7 +353,8 @@ class PlayerTurn extends GameState
             'newDeckTop' => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
             'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK),
             'row' => $row,
-            'slot' => $slot
+            'slot' => $slot,
+            'draft_actions' => $this->game->draft_actions->get($activePlayerId)
         ]);
 
         // Consume the action
@@ -391,7 +392,8 @@ class PlayerTurn extends GameState
                 'deckTop' => $deckTop,
                 'newDeckTop' => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
                 'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK),
-                'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId)
+                'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId),
+                'draw_actions' => $this->game->draw_actions->get($activePlayerId)
             ]
         );
 
