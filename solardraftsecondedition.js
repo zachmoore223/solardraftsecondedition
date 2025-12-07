@@ -1040,8 +1040,9 @@ define([
     *             DRAW             *
     *******************************/
     notif_deckDraw: async function (notif) {
+      const open_actions = notif.open_actions;
       const draw_actions = notif.draw_actions;
-
+      const playerId = notif.player_id;
       console.log("notif_deckDraw", notif);
 
       // --- UPDATE THE COUNT ---
@@ -1065,9 +1066,14 @@ define([
         deckTopElem.remove();
       }
 
-      // Update DRAW counters after card is drawn
-     if (draw_actions !== undefined) {
+      // Update draw/open action counters after card is drawn
+      if (this.counters && this.counters[playerId]) {
+        if (open_actions !== undefined) {
+          this.counters[playerId].open_actions.setValue(open_actions);
+        }
+        if (draw_actions !== undefined) {
           this.counters[playerId].draw_actions.setValue(draw_actions);
+        }
       }
 
       // Add drawn card to hand
@@ -1083,6 +1089,7 @@ define([
       const slot = notif.slot; // 0,1,2
       const card = notif.card;
       const playerId = notif.player_id;
+      const open_actions = notif.open_actions;
       const draft_actions = notif.draft_actions;
 
       // --- UPDATE THE COUNT ---
@@ -1093,7 +1100,7 @@ define([
       //put new card on top to display to user
       if (notif.newDeckTop) {
         this.addCardBackToDeck(notif.newDeckTop);
-      } //add else to show empty deck
+      } //add else to show empty deck ----------------------TO DO
 
       // Remove old deck-top visual
       const deckTopElem = document.getElementById("deck_top_card");
@@ -1117,12 +1124,15 @@ define([
         }
       }
 
-    // Update DRAFT counters after card is drafted
-     if (draft_actions !== undefined) {
-      this.counters[playerId].draft_actions.setValue(draft_actions);
-    }
-
-
+    // Update draft/open counters after card is drafted
+      if (this.counters && this.counters[playerId]) {
+        if (open_actions !== undefined) {
+          this.counters[playerId].open_actions.setValue(open_actions);
+        }
+        if (draft_actions !== undefined) {
+          this.counters[playerId].draft_actions.setValue(draft_actions);
+        }
+      }
       // If it's the current player, add to hand
       if (playerId == this.player_id) {
         await this.handStock.addCard(card);

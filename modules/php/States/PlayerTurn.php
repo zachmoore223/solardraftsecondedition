@@ -140,7 +140,11 @@ class PlayerTurn extends GameState
         // Enrich before sending
         $card = $this->game->enrichCard($card);
 
+        // Consume the action FIRST (before granting new actions from the card)
+        $this->consumeAction($activePlayerId, 'play');
+
         //Add any actions granted from card to current player's action count
+        // This happens AFTER consuming the action, so the granted actions are available for future use
         $this->game->getCardActions($card, $activePlayerId);
 
         // Get all planets currently in tableau (before adding this card)
@@ -288,10 +292,7 @@ class PlayerTurn extends GameState
             $counter = 'moon';
         }
 
-        // Consume the action BEFORE notification (so we can include updated action counts)
-        $this->consumeAction($activePlayerId, 'play');
-
-        // Notify all players
+        // Notify all players (action was already consumed earlier, and new actions were granted)
         $this->notify->all(
             'cardPlayed',
             '${player_name} plays ${cardName}.',
@@ -341,8 +342,12 @@ class PlayerTurn extends GameState
 
         // Move card from row to hand
         $this->game->cards->moveCard($card_id, 'hand', $activePlayerId);
+
         // Replace card from top of deck to the proper solar row & slot #
         $this->game->cards->moveCard($deckTop['id'], $row, $slot);
+
+        // Consume the action
+        $this->consumeAction($activePlayerId, 'draft');
 
         $this->notify->all("draft", clienttranslate('${player_name} DRAFTS ${cardName}'), [
             'player_id' => $activePlayerId,
@@ -354,11 +359,9 @@ class PlayerTurn extends GameState
             'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK),
             'row' => $row,
             'slot' => $slot,
+            'open_actions' => $this->game->open_actions->get($activePlayerId),
             'draft_actions' => $this->game->draft_actions->get($activePlayerId)
         ]);
-
-        // Consume the action
-        $this->consumeAction($activePlayerId, 'draft');
 
         // After action, check if player has more actions
         if ($this->getTotalActions($activePlayerId) > 0) {
@@ -382,6 +385,10 @@ class PlayerTurn extends GameState
         $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
         $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
 
+        // Consume the action
+        $this->consumeAction($activePlayerId, 'draw');
+
+
         // Notify each player that current player drew a card
         $this->game->notify->all(
             'deckDraw',
@@ -393,6 +400,7 @@ class PlayerTurn extends GameState
                 'newDeckTop' => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
                 'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK),
                 'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId),
+                'open_actions' => $this->game->open_actions->get($activePlayerId),
                 'draw_actions' => $this->game->draw_actions->get($activePlayerId)
             ]
         );
@@ -409,9 +417,6 @@ class PlayerTurn extends GameState
             ]
         );
 
-
-        // Consume the action
-        $this->consumeAction($activePlayerId, 'draw');
 
         // After action, check if player has more actions
         if ($this->getTotalActions($activePlayerId) > 0) {
