@@ -404,7 +404,7 @@ class Game extends \Bga\GameFramework\Table
                 array_shift($default_colors),
                 $player["player_canal"],
                 addslashes($player["player_name"]),
-                addslashes($player["player_avatar"]),
+                addslashes($player["player_avatar"]),                
             ]);
         }
 
@@ -438,13 +438,38 @@ class Game extends \Bga\GameFramework\Table
         /*******************************
         *           SOLAR DECK         *
         *******************************/
-        //TO DO - change deck steup according to player count
-        //create inital solarDeck with 110 cards (60 planets, 25 comets, 25 moons)
-        $solarCards = [];
+        $playerCount = count($players);
+
+        //create pools of all cards
+        $planets = [];
+        $comets = [];
+        $moons = [];
+
+        //set card counts according to player count
+        if ($playerCount == 2){
+            $numOfPlanets = 30;
+            $numOfComets = 10;
+            $numOfMoons = 10;
+        } 
+        else if ($playerCount == 3) {
+            $numOfPlanets = 40;
+            $numOfComets = 15;
+            $numOfMoons = 15;
+        } 
+        else if ($playerCount == 4) {
+            $numOfPlanets = 50;
+            $numOfComets = 20;
+            $numOfMoons = 20;
+        }
+        else { // 5 players
+            $numOfPlanets = 60;
+            $numOfComets = 25;
+            $numOfMoons = 25;
+        }
 
         // ---------- PLANETS 1-60 ----------
         for ($i = 1; $i <= 60; $i++) {
-            $solarCards[] = [
+            $planets[] = [
                 'type' => 'planet',
                 'type_arg' => $i,
                 'nbr' => 1
@@ -453,7 +478,7 @@ class Game extends \Bga\GameFramework\Table
 
         // ---------- COMETS 61-85 ----------
         for ($i = 61; $i <= 85; $i++) {
-            $solarCards[] = [
+            $comets[] = [
                 'type' => 'comet',
                 'type_arg' => $i,
                 'nbr' => 1
@@ -462,15 +487,109 @@ class Game extends \Bga\GameFramework\Table
 
         // ---------- MOONS 86-110 ----------
         for ($i = 86; $i <= 110; $i++) {
-            $solarCards[] = [
+            $moons[] = [
                 'type' => 'moon',
                 'type_arg' => $i,
                 'nbr' => 1
             ];
         }
 
-        $this->cards->createCards($solarCards, 'deck');
+        // Shuffle each pool
+        shuffle($planets);
+        shuffle($comets);
+        shuffle($moons);
+
+        /*******************************
+        *     PLAYER COUNT SETUP       *
+        *******************************/
+        // Select the subset needed for this player count
+        $selectedPlanets = array_slice($planets, 0, $numOfPlanets);
+        $selectedComets  = array_slice($comets, 0, $numOfComets);
+        $selectedMoons   = array_slice($moons, 0, $numOfMoons);
+
+        // Deal starting hands: 1 random planet, comet, moon per player
+        $startingPlanets = array_splice($selectedPlanets, 0, $playerCount);
+        $startingComets  = array_splice($selectedComets, 0, $playerCount);
+        $startingMoons   = array_splice($selectedMoons, 0, $playerCount);
+
+        // Prepare discard pile: 1 of each type
+        $discardPlanet = array_shift($selectedPlanets);
+        $discardComet  = array_shift($selectedComets);
+        $discardMoon   = array_shift($selectedMoons);
+
+        // Create ALL selected cards in the deck first (including starting hands and discard)
+        $allCards = array_merge(
+            $startingPlanets, 
+            $startingComets, 
+            $startingMoons,
+            ($discardPlanet ? [$discardPlanet] : []),
+            ($discardComet ? [$discardComet] : []),
+            ($discardMoon ? [$discardMoon] : []),
+            $selectedPlanets, 
+            $selectedComets, 
+            $selectedMoons
+        );
+        
+        $this->cards->createCards($allCards, 'deck');
         $this->cards->shuffle('deck');
+
+        /*******************************
+        *          PLAYER HANDS        *
+        *******************************/
+        // Move starting cards to players' hands
+        foreach ($players as $idx => $player) {
+            $pid = (int)$idx;
+            $pCard = array_shift($startingPlanets);
+            $cCard = array_shift($startingComets);
+            $mCard = array_shift($startingMoons);
+
+            if ($pCard) {
+                $cards = $this->cards->getCardsOfType($pCard['type'], $pCard['type_arg'], 'deck');
+                if (!empty($cards)) {
+                    $card = array_values($cards)[0];
+                    $this->cards->moveCard($card['id'], 'hand', $pid);
+                }
+            }
+            if ($cCard) {
+                $cards = $this->cards->getCardsOfType($cCard['type'], $cCard['type_arg'], 'deck');
+                if (!empty($cards)) {
+                    $card = array_values($cards)[0];
+                    $this->cards->moveCard($card['id'], 'hand', $pid);
+                }
+            }
+            if ($mCard) {
+                $cards = $this->cards->getCardsOfType($mCard['type'], $mCard['type_arg'], 'deck');
+                if (!empty($cards)) {
+                    $card = array_values($cards)[0];
+                    $this->cards->moveCard($card['id'], 'hand', $pid);
+                }
+            }
+        }
+        /*******************************
+        *          DISCARD PILE        *
+        *******************************/
+        // Move one of each type to the discard pile
+        if ($discardPlanet) {
+            $cards = $this->cards->getCardsOfType($discardPlanet['type'], $discardPlanet['type_arg'], 'deck');
+            if (!empty($cards)) {
+                $card = array_values($cards)[0];
+                $this->cards->moveCard($card['id'], self::LOCATION_DISCARD, 3);
+            }
+        }
+        if ($discardComet) {
+            $cards = $this->cards->getCardsOfType($discardComet['type'], $discardComet['type_arg'], 'deck');
+            if (!empty($cards)) {
+                $card = array_values($cards)[0];
+                $this->cards->moveCard($card['id'], self::LOCATION_DISCARD, 3);
+            }
+        }
+        if ($discardMoon) {
+            $cards = $this->cards->getCardsOfType($discardMoon['type'], $discardMoon['type_arg'], 'deck');
+            if (!empty($cards)) {
+                $card = array_values($cards)[0];
+                $this->cards->moveCard($card['id'], self::LOCATION_DISCARD, 3);
+            }
+        }
 
 
         /*******************************
@@ -479,24 +598,6 @@ class Game extends \Bga\GameFramework\Table
         for ($slot = 0; $slot < 3; $slot++) {
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW1, $slot);
             $this->cards->pickCardForLocation('deck', self::LOCATION_SOLARROW2, $slot);
-        }
-
-        /*******************************
-        *          DISCARD PILE        *
-        *******************************/
-        // ****will need to chagnes this to be a stack of cards, starting with three cards and one of each type****
-        //***** will need to go before deck creation and shuffling once ready
-        for ($i = 0; $i < 3; $i++) {
-            $this->cards->pickCardForLocation('deck', self::LOCATION_DISCARD, 3);
-        }
-
-        /*******************************
-        *          PLAYER HANDS        *
-        *******************************/
-        // ****will need to chagnes this to be three cards and one of each type for players****
-        //***** will need to go before deck creation and shuffling once ready
-        foreach ($players as $player_id => $player) {      
-                $this->cards->pickCards(3, 'deck', $player_id);
         }
 
         // Activate first player once everything has been initialized and ready.
