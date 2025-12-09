@@ -839,6 +839,7 @@ define([
 
       if (!this.isCurrentPlayerActive()) {
         this.showMessage(_("It is not your turn"), "error");
+        this.handStock.unselectAll();
         return;
       }
 
@@ -857,6 +858,7 @@ define([
           _("You must play a planet before playing a comet or moon"),
           "error"
         );
+        this.handStock.unselectAll();
         return;
       }
 
@@ -868,14 +870,17 @@ define([
           _("You cannot play a comet next to another comet"),
           "error"
         );
-
-
-        
+        this.handStock.unselectAll();
         return;
       }
 
       //******PLAY CARD AFTER ALL CHECKS
-      this.bgaPerformAction("actPlayCard", { card_id: card.id });
+      this.bgaPerformAction("actPlayCard", { card_id: card.id })
+        .catch((error) => {
+          // If the action fails (e.g., no actions available), deselect the card
+          console.log("Action failed, deselecting card:", error);
+          this.handStock.unselectAll();
+        });
     },
 
     isLastCardInTableauAComet(playerId) {

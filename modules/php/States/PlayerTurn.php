@@ -129,7 +129,7 @@ class PlayerTurn extends GameState
     {   
         // Check if player can play
         if (!$this->canPlay($activePlayerId)) {
-            throw new UserException("You don't have any actions to play a card");
+            throw new UserException("You don't have any PLAY actions available.");
         }
 
         // Take card from player's hand
@@ -330,7 +330,7 @@ class PlayerTurn extends GameState
     {
 
         if (!$this->canDraft($activePlayerId)) {
-            throw new UserException("You don't have any actions to draft a card");
+            throw new UserException("You don't have any DRAFT actions available.");
         }
 
         $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
@@ -379,7 +379,7 @@ class PlayerTurn extends GameState
     {
         // Check if player can draw
         if (!$this->canDraw($activePlayerId)) {
-            throw new UserException("You don't have any actions to draw a card");
+            throw new UserException("You don't have any DRAW actions available.");
         }
 
         $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
