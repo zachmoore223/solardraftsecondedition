@@ -57,13 +57,19 @@ class PlayerTurn extends GameState
                 AND card_type = 'planet'
             ") > 0;
 
+        $abilityId = $this->game->sun_ability_id->get($activePlayerId);
+        $sunAbility = $this->game->getSunAbilityName($abilityId);
+        
         return [
             "mustPlayPlanet" => !$hasPlanets,
             'open_actions' => $this->game->open_actions->get($activePlayerId),
             'draft_actions' => $this->game->draft_actions->get($activePlayerId),
             'draw_actions' => $this->game->draw_actions->get($activePlayerId),
             'play_actions' => $this->game->play_actions->get($activePlayerId),
-            'total_actions' => $this->getTotalActions($activePlayerId)
+            'total_actions' => $this->getTotalActions($activePlayerId),
+            'solar_flare_available' => $this->game->solar_flare_used->get($activePlayerId) == 0,
+            'sun_ability' => $sunAbility,
+            'sun_ability_available' => $this->game->sun_ability_used->get($activePlayerId) == 0 && $abilityId > 0
         ];
     }
 
@@ -73,6 +79,20 @@ class PlayerTurn extends GameState
             + $this->game->draft_actions->get($playerId)
             + $this->game->draw_actions->get($playerId)
             + $this->game->play_actions->get($playerId);
+    }
+
+    /**
+     * Check if the turn should automatically end.
+     * Turn auto-ends only if player has no actions AND has already used both Solar Flare and Sun Ability.
+     */
+    private function shouldAutoEndTurn(int $playerId): bool
+    {
+        $hasActions = $this->getTotalActions($playerId) > 0;
+        $solarFlareUsed = $this->game->solar_flare_used->get($playerId) == 1;
+        $sunAbilityUsed = $this->game->sun_ability_used->get($playerId) == 1;
+        
+        // Auto-end only if no actions left AND both abilities already used
+        return !$hasActions && $solarFlareUsed && $sunAbilityUsed;
     }
 
     private function canDraft(int $playerId): bool
@@ -127,6 +147,15 @@ class PlayerTurn extends GameState
     #[PossibleAction]
     public function actPlayCard(int $card_id, int $activePlayerId, ?int $target_planet_id = null)
     {   
+        // Check if Shell Star is active - if so, only moons can be played
+        $shellStarActive = $this->game->getGameStateValue('shell_star_active');
+        if ($shellStarActive == $activePlayerId) {
+            $card = $this->game->cards->getCard($card_id);
+            if ($card['type'] !== 'moon') {
+                throw new UserException("Shell Star ability is active - you can only play MOONS.");
+            }
+        }
+        
         // Check if player can play
         if (!$this->canPlay($activePlayerId)) {
             throw new UserException("You don't have any PLAY actions available.");
@@ -140,8 +169,12 @@ class PlayerTurn extends GameState
         // Enrich before sending
         $card = $this->game->enrichCard($card);
 
-        // Consume the action FIRST (before granting new actions from the card)
-        $this->consumeAction($activePlayerId, 'play');
+        // Check if Shell Star is active - if so, don't consume actions for moons
+        $shellStarActive = $this->game->getGameStateValue('shell_star_active');
+        if (!($shellStarActive == $activePlayerId && $card['type'] === 'moon')) {
+            // Consume the action FIRST (before granting new actions from the card)
+            $this->consumeAction($activePlayerId, 'play');
+        }
 
         //Add any actions granted from card to current player's action count
         // This happens AFTER consuming the action, so the granted actions are available for future use
@@ -317,12 +350,12 @@ class PlayerTurn extends GameState
             ]
         );
 
-        // After action, check if player has more actions
-        // If not, move to next players turn *************TO DO: How to handle turns with always having possible sun ability action????
-        if ($this->getTotalActions($activePlayerId) > 0) {
-            return PlayerTurn::class;
-        } else {
+        // After action, check if turn should auto-end
+        // Only auto-end if no actions left AND solar flare already used
+        if ($this->shouldAutoEndTurn($activePlayerId)) {
             return NextPlayer::class;
+        } else {
+            return PlayerTurn::class;
         }
 
     }
@@ -368,11 +401,12 @@ class PlayerTurn extends GameState
             'draft_actions' => $this->game->draft_actions->get($activePlayerId)
         ]);
 
-        // After action, check if player has more actions
-        if ($this->getTotalActions($activePlayerId) > 0) {
-            return PlayerTurn::class;
-        } else {
+        // After action, check if turn should auto-end
+        // Only auto-end if no actions left AND solar flare already used
+        if ($this->shouldAutoEndTurn($activePlayerId)) {
             return NextPlayer::class;
+        } else {
+            return PlayerTurn::class;
         }
     }
 
@@ -423,11 +457,12 @@ class PlayerTurn extends GameState
         );
 
 
-        // After action, check if player has more actions
-        if ($this->getTotalActions($activePlayerId) > 0) {
-            return PlayerTurn::class;
-        } else {
+        // After action, check if turn should auto-end
+        // Only auto-end if no actions left AND solar flare already used
+        if ($this->shouldAutoEndTurn($activePlayerId)) {
             return NextPlayer::class;
+        } else {
+            return PlayerTurn::class;
         }
     }
 
@@ -456,6 +491,423 @@ class PlayerTurn extends GameState
         return NextPlayer::class;
     }
 
+    /*******************
+     *   SOLAR FLARE   *           
+     *******************/
+    #[PossibleAction]
+    public function actSolarFlare(int $row, int $activePlayerId)
+    {
+        // Check if player has already used their Solar Flare
+        if ($this->game->solar_flare_used->get($activePlayerId) == 1) {
+            throw new UserException("You have already used your Solar Flare ability this game.");
+        }
+
+        // Validate row number (must be 1 or 2)
+        if ($row != 1 && $row != 2) {
+            throw new UserException("Invalid solar row selected.");
+        }
+
+        // Determine which location to use
+        $solarRowLocation = ($row == 1) ? Game::LOCATION_SOLARROW1 : Game::LOCATION_SOLARROW2;
+        $rowName = ($row == 1) ? 'Solar Row 1' : 'Solar Row 2';
+
+        // Get all cards currently in the selected solar row
+        $cardsInRow = $this->game->cards->getCardsInLocation($solarRowLocation);
+        
+        // Move all cards from the row to discard
+        foreach ($cardsInRow as $card) {
+            $this->game->cards->moveCard($card['id'], Game::LOCATION_DISCARD, 3);
+        }
+
+        // Fill the row with new cards from the deck
+        $newCards = [];
+        for ($slot = 0; $slot < 3; $slot++) {
+            $newCard = $this->game->cards->pickCardForLocation('deck', $solarRowLocation, $slot);
+            if ($newCard) {
+                $newCards[] = $this->game->enrichCard($newCard);
+            }
+        }
+
+        // Mark Solar Flare as used
+        $this->game->solar_flare_used->set($activePlayerId, 1);
+
+        // Notify all players
+        $this->notify->all(
+            'solarFlare',
+            clienttranslate('${player_name} uses Solar Flare on ${rowName}'),
+            [
+                'player_id' => $activePlayerId,
+                'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                'row' => $row,
+                'rowName' => $rowName,
+                'discardedCards' => $this->game->enrichCards(array_values($cardsInRow)),
+                'newCards' => $newCards,
+                'cardsRemaining' => $this->game->cards->countCardsInLocation('deck'),
+                'cardsInDiscard' => $this->game->cards->countCardsInLocation(Game::LOCATION_DISCARD),
+            ]
+        );
+
+        // Solar Flare is a bonus action, doesn't consume regular actions, doesn't end turn
+        // But check if we should auto-end now (no actions left and solar flare just used)
+        if ($this->shouldAutoEndTurn($activePlayerId)) {
+            return NextPlayer::class;
+        } else {
+            return PlayerTurn::class;
+        }
+    }
+
+    /*******************
+     *   SUN ABILITY   *           
+     *******************/
+    #[PossibleAction]
+    public function actSunAbility(int $activePlayerId, ?array $args = null)
+    {
+        // Check if player has already used their Sun Ability
+        if ($this->game->sun_ability_used->get($activePlayerId) == 1) {
+            throw new UserException("You have already used your Sun Ability this game.");
+        }
+
+        // Get player's sun ability
+        $abilityId = $this->game->sun_ability_id->get($activePlayerId);
+        $sunAbility = $this->game->getSunAbilityName($abilityId);
+        
+        if (!$sunAbility || $abilityId == 0) {
+            throw new UserException("You do not have a Sun Ability assigned.");
+        }
+
+        // Route to the specific ability implementation
+        switch ($sunAbility) {
+            case 'Shell Star':
+                return $this->actShellStar($activePlayerId, $args);
+            case 'Binary Star':
+                return $this->actBinaryStar($activePlayerId, $args);
+            case 'Quasar':
+                return $this->actQuasar($activePlayerId, $args);
+            case 'Supernova':
+                return $this->actSupernova($activePlayerId, $args);
+            case 'Neutron Star':
+                return $this->actNeutronStar($activePlayerId, $args);
+            case 'Ternary Star':
+                return $this->actTernaryStar($activePlayerId, $args);
+            case 'Pulsar':
+                return $this->actPulsar($activePlayerId, $args);
+            case 'Super Star':
+                return $this->actSuperStar($activePlayerId, $args);
+            case 'Protostar':
+                return $this->actProtostar($activePlayerId, $args);
+            case 'Red Dwarf':
+                return $this->actRedDwarf($activePlayerId, $args);
+            default:
+                throw new UserException("Unknown Sun Ability: " . $sunAbility);
+        }
+    }
+
+    private function actShellStar(int $playerId, ?array $args): string
+    {
+        // PLAY any number of MOONS
+        // Grant unlimited moon play actions (or a very large number)
+        $this->game->play_actions->set($playerId, 999);
+        // Set a flag so we know only moons can be played
+        $this->game->setGameStateValue('shell_star_active', $playerId);
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: PLAY any number of MOONS'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Shell Star',
+        ]);
+        
+        return PlayerTurn::class;
+    }
+
+    private function actBinaryStar(int $playerId, ?array $args): string
+    {
+        // DRAFT a card then PLAY a card
+        $this->game->grantDraftAction($playerId, 1);
+        $this->game->grantPlayAction($playerId, 1);
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: DRAFT a card then PLAY a card'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Binary Star',
+            'open_actions' => $this->game->open_actions->get($playerId),
+            'draft_actions' => $this->game->draft_actions->get($playerId),
+            'play_actions' => $this->game->play_actions->get($playerId),
+        ]);
+        
+        return PlayerTurn::class;
+    }
+
+    private function actQuasar(int $playerId, ?array $args): string
+    {
+        // DRAFT 2 cards
+        $this->game->grantDraftAction($playerId, 2);
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: DRAFT 2 cards'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Quasar',
+            'open_actions' => $this->game->open_actions->get($playerId),
+            'draft_actions' => $this->game->draft_actions->get($playerId),
+        ]);
+        
+        return PlayerTurn::class;
+    }
+
+    private function actSupernova(int $playerId, ?array $args): string
+    {
+        // Discard three cards to DRAFT a ROW of cards and then PLAY up to 3 cards
+        // This is a multi-step ability - for now, we'll grant the actions
+        // TODO: Implement card selection for discard and row selection
+        
+        if (!$args || !isset($args['discarded_card_ids']) || count($args['discarded_card_ids']) != 3) {
+            throw new UserException("You must discard exactly 3 cards from your hand to use Supernova.");
+        }
+        
+        if (!isset($args['row']) || ($args['row'] != 1 && $args['row'] != 2)) {
+            throw new UserException("You must select a solar row (1 or 2) to draft.");
+        }
+        
+        // Verify all cards are in player's hand
+        $handCards = $this->game->cards->getCardsInLocation('hand', $playerId);
+        $handCardIds = array_map(fn($c) => $c['id'], $handCards);
+        
+        foreach ($args['discarded_card_ids'] as $cardId) {
+            if (!in_array($cardId, $handCardIds)) {
+                throw new UserException("One or more selected cards are not in your hand.");
+            }
+        }
+        
+        // Discard the cards
+        foreach ($args['discarded_card_ids'] as $cardId) {
+            $this->game->cards->moveCard($cardId, Game::LOCATION_DISCARD, 3);
+        }
+        
+        // Draft the entire row
+        $solarRowLocation = ($args['row'] == 1) ? Game::LOCATION_SOLARROW1 : Game::LOCATION_SOLARROW2;
+        $draftedCards = [];
+        for ($slot = 0; $slot < 3; $slot++) {
+            $card = $this->game->cards->getCardsInLocation($solarRowLocation, $slot);
+            if (!empty($card)) {
+                $card = array_values($card)[0];
+                $this->game->cards->moveCard($card['id'], 'hand', $playerId);
+                $draftedCards[] = $this->game->enrichCard($card);
+            }
+        }
+        
+        // Grant 3 play actions
+        $this->game->grantPlayAction($playerId, 3);
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: Discards 3 cards, drafts a row, and can PLAY up to 3 cards'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Supernova',
+            'row' => $args['row'],
+            'draftedCards' => $draftedCards,
+            'play_actions' => $this->game->play_actions->get($playerId),
+        ]);
+        
+        return PlayerTurn::class;
+    }
+
+    private function actNeutronStar(int $playerId, ?array $args): string
+    {
+        // PLAY 2 cards
+        $this->game->grantPlayAction($playerId, 2);
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: PLAY 2 cards'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Neutron Star',
+            'play_actions' => $this->game->play_actions->get($playerId),
+        ]);
+        
+        return PlayerTurn::class;
+    }
+
+    private function actTernaryStar(int $playerId, ?array $args): string
+    {
+        // Gain an additional ACTION and then DRAW 2 cards
+        $this->game->open_actions->inc($playerId, 1);
+        $this->game->grantDrawAction($playerId, 2);
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: Gains an ACTION and can DRAW 2 cards'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Ternary Star',
+            'open_actions' => $this->game->open_actions->get($playerId),
+            'draw_actions' => $this->game->draw_actions->get($playerId),
+        ]);
+        
+        return PlayerTurn::class;
+    }
+
+    private function actPulsar(int $playerId, ?array $args): string
+    {
+        // Reuse the ability of one of your comets
+        if (!$args || !isset($args['comet_card_id'])) {
+            throw new UserException("You must select a comet to reuse its ability.");
+        }
+        
+        $cometCard = $this->game->cards->getCard($args['comet_card_id']);
+        if (!$cometCard || $cometCard['type'] != 'comet') {
+            throw new UserException("Invalid comet card selected.");
+        }
+        
+        // Verify the comet is in the player's tableau
+        if ($cometCard['location'] != 'tableau' || $cometCard['location_arg'] != $playerId) {
+            throw new UserException("The selected comet must be in your tableau.");
+        }
+        
+        // Re-execute the comet's ability
+        $cometCard = $this->game->enrichCard($cometCard);
+        $this->game->getCardActions($cometCard, $playerId);
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: Reuses the ability of ${cometName}'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Pulsar',
+            'cometName' => $this->game->getCardName($cometCard),
+            'open_actions' => $this->game->open_actions->get($playerId),
+            'draft_actions' => $this->game->draft_actions->get($playerId),
+            'draw_actions' => $this->game->draw_actions->get($playerId),
+            'play_actions' => $this->game->play_actions->get($playerId),
+        ]);
+        
+        return PlayerTurn::class;
+    }
+
+    private function actSuperStar(int $playerId, ?array $args): string
+    {
+        // Look at the TOP 4 cards of the Solar Deck. Put 2 into your hand, place the rest on the bottom.
+        if (!$args || !isset($args['selected_card_ids']) || count($args['selected_card_ids']) != 2) {
+            throw new UserException("You must select exactly 2 cards to add to your hand.");
+        }
+        
+        // Get top 4 cards from deck
+        $topCards = $this->game->cards->getCardsOnTop(4, 'deck');
+        if (count($topCards) < 4) {
+            throw new UserException("There are not enough cards in the deck.");
+        }
+        
+        $topCardIds = array_map(fn($c) => $c['id'], $topCards);
+        
+        // Verify selected cards are in the top 4
+        foreach ($args['selected_card_ids'] as $cardId) {
+            if (!in_array($cardId, $topCardIds)) {
+                throw new UserException("Selected cards must be from the top 4 cards of the deck.");
+            }
+        }
+        
+        // Move selected cards to hand
+        foreach ($args['selected_card_ids'] as $cardId) {
+            $this->game->cards->moveCard($cardId, 'hand', $playerId);
+        }
+        
+        // Move remaining cards to bottom of deck
+        foreach ($topCards as $card) {
+            if (!in_array($card['id'], $args['selected_card_ids'])) {
+                $this->game->cards->insertCardOnExtremePosition($card['id'], 'deck', false);
+            }
+        }
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: Looks at top 4 cards, takes 2 into hand, places rest on bottom'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Super Star',
+            'cardsInHand' => count($this->game->cards->getCardsInLocation('hand', $playerId)),
+        ]);
+        
+        return PlayerTurn::class;
+    }
+
+    private function actProtostar(int $playerId, ?array $args): string
+    {
+        // COPY the sun ability of the player to your left or right
+        if (!$args || !isset($args['target_player_id'])) {
+            throw new UserException("You must select a player (left or right) to copy their sun ability.");
+        }
+        
+        $targetPlayerId = (int)$args['target_player_id'];
+        $targetAbilityId = $this->game->sun_ability_id->get($targetPlayerId);
+        $targetAbility = $this->game->getSunAbilityName($targetAbilityId);
+        
+        if (!$targetAbility || $targetAbilityId == 0) {
+            throw new UserException("The selected player does not have a sun ability.");
+        }
+        
+        // Execute the copied ability by temporarily setting the player's ability ID and calling it
+        // Save original ability ID
+        $originalAbilityId = $this->game->sun_ability_id->get($playerId);
+        
+        // Temporarily set to target ability ID and execute
+        $this->game->sun_ability_id->set($playerId, $targetAbilityId);
+        
+        // Execute the ability (but don't mark as used for the original player, just for this player)
+        $tempArgs = $args['ability_args'] ?? null;
+        $result = $this->actSunAbility($playerId, $tempArgs);
+        
+        // Restore original ability ID
+        $this->game->sun_ability_id->set($playerId, $originalAbilityId);
+        
+        // Mark as used for THIS player (not the target)
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: Copies the sun ability of ${target_name}'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Protostar',
+            'target_name' => $this->game->getPlayerNameById($targetPlayerId),
+            'copied_ability' => $targetAbility,
+        ]);
+        
+        return $result;
+    }
+
+    private function actRedDwarf(int $playerId, ?array $args): string
+    {
+        // Put the TOP 3 cards of the DISCARD PILE into your hand
+        $discardCards = $this->game->cards->getCardsInLocation(Game::LOCATION_DISCARD);
+        
+        if (count($discardCards) < 3) {
+            throw new UserException("There are not enough cards in the discard pile.");
+        }
+        
+        // Get top 3 cards (assuming they're ordered by location_arg, highest = top)
+        usort($discardCards, fn($a, $b) => $b['location_arg'] - $a['location_arg']);
+        $top3Cards = array_slice($discardCards, 0, 3);
+        
+        foreach ($top3Cards as $card) {
+            $this->game->cards->moveCard($card['id'], 'hand', $playerId);
+        }
+        
+        $this->game->sun_ability_used->set($playerId, 1);
+        
+        $this->notify->all('sunAbilityUsed', clienttranslate('${player_name} uses ${ability}: Takes the top 3 cards from the discard pile into hand'), [
+            'player_id' => $playerId,
+            'player_name' => $this->game->getPlayerNameById($playerId),
+            'ability' => 'Red Dwarf',
+            'cardsInHand' => count($this->game->cards->getCardsInLocation('hand', $playerId)),
+            'cardsInDiscard' => count($this->game->cards->getCardsInLocation(Game::LOCATION_DISCARD)),
+        ]);
+        
+        return PlayerTurn::class;
+    }
 
     /**
      * This method is called each time it is the turn of a player who has quit the game (= "zombie" player).

@@ -695,6 +695,71 @@ define([
             this.counters[activePlayerId].play_actions.setValue(args.play_actions);
           }
         }
+
+        // Add Solar Flare button if available
+        if (stateName === "PlayerTurn" && args && args.solar_flare_available && this.isCurrentPlayerActive()) {
+          // Check if button already exists to avoid duplicates
+          if (!document.getElementById("solar_flare_btn")) {
+            this.addActionButton(
+              "solar_flare_btn",
+              _("Solar Flare"),
+              () => {
+                // Show a dialog to choose which row (1 or 2)
+                this.showSolarFlareDialog();
+              },
+              null,
+              false,
+              "blue"
+            );
+          }
+        } else {
+          // Remove button if not available or not active player
+          const btn = document.getElementById("solar_flare_btn");
+          if (btn) btn.remove();
+        }
+
+        // Add Sun Ability button if available
+        if (stateName === "PlayerTurn" && args && args.sun_ability && args.sun_ability_available && this.isCurrentPlayerActive()) {
+          // Check if button already exists to avoid duplicates
+          if (!document.getElementById("sun_ability_btn")) {
+            this.addActionButton(
+              "sun_ability_btn",
+              args.sun_ability,
+              () => {
+                // Show appropriate dialog/action based on ability
+                this.useSunAbility(args.sun_ability);
+              },
+              null,
+              false,
+              "green"
+            );
+          }
+        } else {
+          // Remove button if not available or not active player
+          const btn = document.getElementById("sun_ability_btn");
+          if (btn) btn.remove();
+        }
+
+        // Add Pass button if it's the player's turn
+        if (stateName === "PlayerTurn" && this.isCurrentPlayerActive()) {
+          // Check if button already exists to avoid duplicates
+          if (!document.getElementById("pass_btn")) {
+            this.addActionButton(
+              "pass_btn",
+              _("Pass"),
+              () => {
+                this.bgaPerformAction("actPass");
+              },
+              null,
+              false,
+              "gray"
+            );
+          }
+        } else {
+          // Remove button if not active player
+          const btn = document.getElementById("pass_btn");
+          if (btn) btn.remove();
+        }
       }
 
       if (this.isCurrentPlayerActive()) {
@@ -912,6 +977,33 @@ define([
       }
 
       return false;
+    },
+
+    showSolarFlareDialog() {
+      const self = this;
+      const dialog = new ebg.popindialog();
+      dialog.create("solar_flare_dialog");
+      dialog.setTitle(_("Choose Solar Row"));
+      dialog.setContent(
+        '<div style="padding: 10px;">' +
+          '<p>' + _("Which solar row would you like to refresh?") + '</p>' +
+          '<div style="margin-top: 20px; text-align: center;">' +
+            '<button id="solar_flare_row1" style="margin: 5px; padding: 10px 20px; font-size: 16px;">Solar Row 1</button>' +
+            '<button id="solar_flare_row2" style="margin: 5px; padding: 10px 20px; font-size: 16px;">Solar Row 2</button>' +
+          '</div>' +
+        '</div>'
+      );
+      dialog.show();
+
+      dojo.connect(dojo.byId("solar_flare_row1"), "onclick", () => {
+        dialog.destroy();
+        this.bgaPerformAction("actSolarFlare", { row: 1 });
+      });
+
+      dojo.connect(dojo.byId("solar_flare_row2"), "onclick", () => {
+        dialog.destroy();
+        this.bgaPerformAction("actSolarFlare", { row: 2 });
+      });
     },
 
     addCardBackToDeck(card) {
@@ -1150,6 +1242,86 @@ define([
     notif_pass: function (notif) {
       console.log("notif_pass", notif);
       // Nothing to do visually for a pass
+    },
+
+    notif_sunAbilityUsed: function (notif) {
+      console.log("notif_sunAbilityUsed", notif);
+      // Hide the Sun Ability button if this player used it
+      if (notif.player_id === this.player_id) {
+        const btn = document.getElementById("sun_ability_btn");
+        if (btn) btn.remove();
+      }
+      
+      // Update action counters if provided
+      if (notif.open_actions !== undefined && this.counters && this.counters[notif.player_id]) {
+        this.counters[notif.player_id].open_actions.setValue(notif.open_actions);
+      }
+      if (notif.draft_actions !== undefined && this.counters && this.counters[notif.player_id]) {
+        this.counters[notif.player_id].draft_actions.setValue(notif.draft_actions);
+      }
+      if (notif.draw_actions !== undefined && this.counters && this.counters[notif.player_id]) {
+        this.counters[notif.player_id].draw_actions.setValue(notif.draw_actions);
+      }
+      if (notif.play_actions !== undefined && this.counters && this.counters[notif.player_id]) {
+        this.counters[notif.player_id].play_actions.setValue(notif.play_actions);
+      }
+    },
+
+    notif_solarFlare: async function (notif) {
+      console.log("notif_solarFlare", notif);
+      const row = notif.row;
+      const discardedCards = notif.discardedCards || [];
+      const newCards = notif.newCards || [];
+
+      // Update deck count
+      if (notif.cardsRemaining !== undefined) {
+        document.getElementById("deck-count").innerText = notif.cardsRemaining;
+      }
+
+      // Determine which solar row stock to update
+      const solarRowStock = row === 1 ? this.solarRow1 : this.solarRow2;
+
+      // Remove all cards from the row
+      // Get all items from the stock and remove them
+      // LineStock has an items array containing all cards
+      if (solarRowStock.items && solarRowStock.items.length > 0) {
+        // Create a copy of items array to avoid issues while iterating
+        const itemsCopy = Array.from(solarRowStock.items);
+        for (let item of itemsCopy) {
+          if (item && item.id) {
+            try {
+              await solarRowStock.removeCard(item);
+            } catch (e) {
+              console.warn("Error removing card from solar row:", e);
+            }
+          }
+        }
+      }
+
+      // Add discarded cards to discard pile
+      for (let card of discardedCards) {
+        await this.discardDeck.addCard(card);
+      }
+
+      // Add new cards to the solar row
+      for (let card of newCards) {
+        const slot = card.location_arg || 0;
+        await solarRowStock.addCard(card, { index: slot });
+      }
+
+      // Update discard count display
+      if (notif.cardsInDiscard !== undefined) {
+        const discardCountEl = document.getElementById("deck-count");
+        if (discardCountEl) {
+          discardCountEl.innerText = notif.cardsInDiscard;
+        }
+      }
+
+      // Hide the Solar Flare button if this player used it
+      if (notif.player_id === this.player_id) {
+        const btn = document.getElementById("solar_flare_btn");
+        if (btn) btn.remove();
+      }
     },
 
     /*******************************

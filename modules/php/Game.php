@@ -37,6 +37,9 @@ class Game extends \Bga\GameFramework\Table
     public PlayerCounter $draw_actions;
     public PlayerCounter $play_actions;
     public PlayerCounter $open_actions;
+    public PlayerCounter $solar_flare_used;
+    public PlayerCounter $sun_ability_used;
+    public PlayerCounter $sun_ability_id; // Stores which ability (1-10) the player has
     public $planetOrder = [];   
     public $cards;
     const LOCATION_DECK = 'deck';
@@ -201,6 +204,13 @@ class Game extends \Bga\GameFramework\Table
         $this->draft_actions = $this->counterFactory->createPlayerCounter('draft_actions');
         $this->draw_actions = $this->counterFactory->createPlayerCounter('draw_actions');
         $this->play_actions = $this->counterFactory->createPlayerCounter('play_actions');
+        // SUN ABILITY TRACKING (0 = available, 1 = used)
+        $this->solar_flare_used = $this->counterFactory->createPlayerCounter('solar_flare_used');
+        $this->sun_ability_used = $this->counterFactory->createPlayerCounter('sun_ability_used');
+        // SUN ABILITY ID (1-10) mapping:
+        // 1=Shell Star, 2=Binary Star, 3=Quasar, 4=Supernova, 5=Neutron Star,
+        // 6=Ternary Star, 7=Pulsar, 8=Super Star, 9=Protostar, 10=Red Dwarf
+        $this->sun_ability_id = $this->counterFactory->createPlayerCounter('sun_ability_id');
     
     }
 
@@ -283,6 +293,16 @@ class Game extends \Bga\GameFramework\Table
             $this->draft_actions->fillResult($result);
             $this->draw_actions->fillResult($result);
             $this->play_actions->fillResult($result);
+            $this->solar_flare_used->fillResult($result);
+            $this->sun_ability_used->fillResult($result);
+            $this->sun_ability_id->fillResult($result);
+            
+            // Add sun ability info to each player (convert ID to name)
+            foreach ($result['players'] as $playerId => $player) {
+                $abilityId = $this->sun_ability_id->get($playerId);
+                $result['players'][$playerId]['sun_ability'] = $this->getSunAbilityName($abilityId);
+                $result['players'][$playerId]['sun_ability_used'] = $this->sun_ability_used->get($playerId) == 1;
+            }
 
             // ----------------------
             // TABLEAU (planet / moon / comet)
@@ -391,7 +411,23 @@ class Game extends \Bga\GameFramework\Table
         $this->open_actions->initDb(array_keys($players));
         $this->draft_actions->initDb(array_keys($players));
         $this->draw_actions->initDb(array_keys($players));
-        $this->play_actions->initDb(array_keys($players));                    
+        $this->play_actions->initDb(array_keys($players));
+        $this->solar_flare_used->initDb(array_keys($players));
+        $this->sun_ability_used->initDb(array_keys($players));
+        $this->sun_ability_id->initDb(array_keys($players));
+        
+        // Randomly assign one sun ability to each player (stored as ID 1-10)
+        // Ability mapping: 1=Shell Star, 2=Binary Star, 3=Quasar, 4=Supernova, 5=Neutron Star,
+        // 6=Ternary Star, 7=Pulsar, 8=Super Star, 9=Protostar, 10=Red Dwarf
+        $abilityIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        shuffle($abilityIds);
+        
+        $playerIds = array_keys($players);
+        foreach ($playerIds as $idx => $playerId) {
+            $abilityId = $abilityIds[$idx % count($abilityIds)];
+            $this->sun_ability_id->set($playerId, $abilityId);
+        }
+        
         // Set the colors of the players with HTML color code. The default below is red/green/blue/orange/brown. The
         // number of colors defined here must correspond to the maximum number of players allowed for the game.
         $gameinfos = $this->getGameinfos();
@@ -645,6 +681,46 @@ class Game extends \Bga\GameFramework\Table
     /*************************************************
      *               CARD INFO HELPERS                
      *************************************************/
+
+    /**
+     * Get sun ability name from ID
+     */
+    public function getSunAbilityName(int $abilityId): ?string
+    {
+        $abilities = [
+            1 => 'Shell Star',
+            2 => 'Binary Star',
+            3 => 'Quasar',
+            4 => 'Supernova',
+            5 => 'Neutron Star',
+            6 => 'Ternary Star',
+            7 => 'Pulsar',
+            8 => 'Super Star',
+            9 => 'Protostar',
+            10 => 'Red Dwarf'
+        ];
+        return $abilities[$abilityId] ?? null;
+    }
+
+    /**
+     * Get sun ability ID from name
+     */
+    public function getSunAbilityId(string $abilityName): ?int
+    {
+        $abilities = [
+            'Shell Star' => 1,
+            'Binary Star' => 2,
+            'Quasar' => 3,
+            'Supernova' => 4,
+            'Neutron Star' => 5,
+            'Ternary Star' => 6,
+            'Pulsar' => 7,
+            'Super Star' => 8,
+            'Protostar' => 9,
+            'Red Dwarf' => 10
+        ];
+        return $abilities[$abilityName] ?? null;
+    }
 
     //Get full card info (name, points, ability, etc.)
     public function getCardInfo($card)

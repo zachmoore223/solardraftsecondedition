@@ -52,7 +52,7 @@ class MoonPlacement extends GameState
 
          // Get planet info to check moon limit
         $planetInfo = $this->game->getCardInfo($targetPlanet);
-        $moonLimit = $planetInfo['moonLimit'] ?? 2; // Default moon limit is 2
+        $moonLimit = $planetInfo['moonLimit'] ?? 3; // Default moon limit is 3
 
         // Count current moons on this planet
         $currentMoonCount = (int) $this->game->getUniqueValueFromDB("
@@ -64,13 +64,25 @@ class MoonPlacement extends GameState
 
         // Check if planet is at moon limit and cancel action if so
         if ($currentMoonCount >= $moonLimit) {
-            // Send error message to the player
+            // Special error message for Sasquatch
+            if ($target_planet_id == 28) {                 
+                 $this->notify->player(
+                     $activePlayerId,
+                     'message',
+                    clienttranslate('Sasquatch cannot have moons. Please select another planet.'),
+                    []
+                );
+            }
+            // Regular error message if planet is not Sasquatch
+            else {                
                 $this->notify->player(
                     $activePlayerId,
                     'message',
                     clienttranslate('This planet already has the maximum number of moons. Please select another planet.'),
                     []
                 );
+            }
+
             $pending_moon_card_id = $this->game->getGameStateValue('pending_moon_card_id');
 
             // Card should still be in hand, so just transition back
