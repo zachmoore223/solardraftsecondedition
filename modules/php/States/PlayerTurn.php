@@ -247,28 +247,33 @@ class PlayerTurn extends GameState
 
             $cardColor = $card['color'];
             $newValue = null;
+            
+            // Check if this planet counts as double (Diazure, Diverde, Dirojo, Dimarron)
+            // These are: 12 (Diazure), 27 (Diverde), 41 (Dirojo), 58 (Dimarron)
+            $countsAsDouble = in_array($card['type_arg'], [12, 27, 41, 58]);
+            $incrementAmount = $countsAsDouble ? 2 : 1;
 
             switch ($cardColor) {
                 case 'BLUE':
-                    $this->game->blue_planet_count->inc($activePlayerId, 1);
+                    $this->game->blue_planet_count->inc($activePlayerId, $incrementAmount);
                     $newValue = $this->game->blue_planet_count->get($activePlayerId);
                     $counter = 'blue';
                     break;
 
                 case 'GREEN':
-                    $this->game->green_planet_count->inc($activePlayerId, 1);
+                    $this->game->green_planet_count->inc($activePlayerId, $incrementAmount);
                     $newValue = $this->game->green_planet_count->get($activePlayerId);
                     $counter = 'green';
                     break;
 
                 case 'RED':
-                    $this->game->red_planet_count->inc($activePlayerId, 1);
+                    $this->game->red_planet_count->inc($activePlayerId, $incrementAmount);
                     $newValue = $this->game->red_planet_count->get($activePlayerId);
                     $counter = 'red';
                     break;
 
                 case 'TAN':
-                    $this->game->tan_planet_count->inc($activePlayerId, 1);
+                    $this->game->tan_planet_count->inc($activePlayerId, $incrementAmount);
                     $newValue = $this->game->tan_planet_count->get($activePlayerId);
                     $counter = 'tan';
                     break;
