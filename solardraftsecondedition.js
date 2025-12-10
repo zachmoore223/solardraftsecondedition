@@ -699,6 +699,64 @@ define([
                 this.counters[activePlayerId].play_actions.toValue(stateArgs.play_actions);
               }
             }
+            
+            // Update status bar description based on available actions
+            // Add safety checks to prevent errors during initialization
+            if (stateArgs && stateArgs.descriptionMyTurn && this.isCurrentPlayerActive && this.isCurrentPlayerActive()) {
+              try {
+                let description = stateArgs.descriptionMyTurn;
+                if (this.getPlayerName && this.player_id) {
+                  description = description.replace('${you}', this.getPlayerName(this.player_id));
+                }
+                if (stateArgs.available_actions && Array.isArray(stateArgs.available_actions) && stateArgs.available_actions.length > 0) {
+                  // Translate and capitalize action names
+                  const translatedActions = stateArgs.available_actions.map(action => {
+                    if (!action) return '';
+                    // Capitalize first letter of each word
+                    const translated = _(action);
+                    return translated.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                  }).filter(a => a);
+                  
+                  if (translatedActions.length === 1) {
+                    description = description.replace('${action}', translatedActions[0]);
+                  } else if (translatedActions.length > 1) {
+                    const actionList = translatedActions.slice(0, -1).join(', ') + ' ' + _('or') + ' ' + translatedActions[translatedActions.length - 1];
+                    description = description.replace('${actionList}', actionList);
+                  }
+                }
+                if (this.statusBar && this.statusBar.setTitle && description) {
+                  this.statusBar.setTitle(description);
+                }
+              } catch (e) {
+                console.error("Error updating description in onEnteringState:", e);
+              }
+            } else if (stateArgs && stateArgs.description && activePlayerId && this.getPlayerName) {
+              try {
+                let description = stateArgs.description;
+                description = description.replace('${actplayer}', this.getPlayerName(activePlayerId));
+                if (stateArgs.available_actions && Array.isArray(stateArgs.available_actions) && stateArgs.available_actions.length > 0) {
+                  // Translate and capitalize action names
+                  const translatedActions = stateArgs.available_actions.map(action => {
+                    if (!action) return '';
+                    // Capitalize first letter of each word
+                    const translated = _(action);
+                    return translated.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+                  }).filter(a => a);
+                  
+                  if (translatedActions.length === 1) {
+                    description = description.replace('${action}', translatedActions[0]);
+                  } else if (translatedActions.length > 1) {
+                    const actionList = translatedActions.slice(0, -1).join(', ') + ' ' + _('or') + ' ' + translatedActions[translatedActions.length - 1];
+                    description = description.replace('${actionList}', actionList);
+                  }
+                }
+                if (this.statusBar && this.statusBar.setTitle && description) {
+                  this.statusBar.setTitle(description);
+                }
+              } catch (e) {
+                console.error("Error updating description in onEnteringState:", e);
+              }
+            }
           }
           break;
 
@@ -749,33 +807,97 @@ define([
             this.counters[activePlayerId].play_actions.toValue(args.play_actions);
           }
         }
+        
+        // Update status bar description based on available actions
+        // Add safety checks to prevent errors during initialization
+        if (args && this.statusBar && this.statusBar.setTitle) {
+          try {
+            let description = '';
+            
+            if (args.descriptionMyTurn && this.isCurrentPlayerActive && this.isCurrentPlayerActive()) {
+              // For active player
+              description = args.descriptionMyTurn;
+              if (this.getPlayerName && this.player_id) {
+                description = description.replace('${you}', this.getPlayerName(this.player_id));
+              }
+            } else if (args.description && activePlayerId && this.getPlayerName) {
+              // For other players
+              description = args.description;
+              description = description.replace('${actplayer}', this.getPlayerName(activePlayerId));
+            }
+            
+            // Replace action placeholders if we have available actions
+            if (description && args.available_actions && Array.isArray(args.available_actions) && args.available_actions.length > 0) {
+              // Translate and capitalize action names
+              const translatedActions = args.available_actions.map(action => {
+                if (!action) return '';
+                // Capitalize first letter of each word
+                const translated = _(action);
+                return translated.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+              }).filter(a => a);
+              
+              if (translatedActions.length === 1) {
+                description = description.replace('${action}', translatedActions[0]);
+              } else if (translatedActions.length > 1) {
+                // Build action list with "or" before last item
+                const actionList = translatedActions.slice(0, -1).join(', ') + ' ' + _('or') + ' ' + translatedActions[translatedActions.length - 1];
+                description = description.replace('${actionList}', actionList);
+              }
+            }
+            
+            // Always set a description (use default if dynamic one is empty)
+            if (description) {
+              this.statusBar.setTitle(description);
+            }
+          } catch (e) {
+            console.error("Error updating description:", e);
+          }
+        }
 
         // Add Solar Flare button if available
+        // Only show if we're not in "solar flare selection mode" (i.e., row selection buttons aren't showing)
         if (stateName === "PlayerTurn" && args && args.solar_flare_available && this.isCurrentPlayerActive()) {
-          // Check if button already exists to avoid duplicates
-          if (!document.getElementById("solar_flare_btn")) {
-            this.addActionButton(
-              "solar_flare_btn",
-              _("Solar Flare"),
-              () => {
-                // Show a dialog to choose which row (1 or 2)
-                this.showSolarFlareDialog();
-              },
-              null,
-              false,
-              "blue"
-            );
+          // Check if we're already in selection mode (row buttons exist)
+          const row1Btn = document.getElementById("solar_flare_row1_btn");
+          const row2Btn = document.getElementById("solar_flare_row2_btn");
+          const cancelBtn = document.getElementById("solar_flare_cancel_btn");
+          
+          if (!row1Btn && !row2Btn && !cancelBtn) {
+            // Not in selection mode, show the main Solar Flare button
+            const existingBtn = document.getElementById("solar_flare_btn");
+            if (!existingBtn) {
+              this.addActionButton(
+                "solar_flare_btn",
+                _("Solar Flare"),
+                () => {
+                  // Hide Solar Flare button and show row selection buttons
+                  this.showSolarFlareRowButtons();
+                },
+                null,
+                false,
+                "blue"
+              );
+            } else {
+              // Button exists but might be hidden - make sure it's visible
+              existingBtn.style.display = '';
+            }
           }
         } else {
-          // Remove button if not available or not active player
-          const btn = document.getElementById("solar_flare_btn");
-          if (btn) btn.remove();
+          // Remove all Solar Flare related buttons if not available or not active player
+          this.hideSolarFlareButtons();
         }
 
         // Add Sun Ability button if available
-        if (stateName === "PlayerTurn" && args && args.sun_ability && args.sun_ability_available && this.isCurrentPlayerActive()) {
+        // Don't add if we're in Solar Flare selection mode (row buttons exist)
+        const row1Btn = document.getElementById("solar_flare_row1_btn");
+        const row2Btn = document.getElementById("solar_flare_row2_btn");
+        const cancelBtn = document.getElementById("solar_flare_cancel_btn");
+        const inSolarFlareSelection = row1Btn || row2Btn || cancelBtn;
+        
+        if (stateName === "PlayerTurn" && args && args.sun_ability && args.sun_ability_available && this.isCurrentPlayerActive() && !inSolarFlareSelection) {
           // Check if button already exists to avoid duplicates
-          if (!document.getElementById("sun_ability_btn")) {
+          const existingBtn = document.getElementById("sun_ability_btn");
+          if (!existingBtn) {
             this.addActionButton(
               "sun_ability_btn",
               args.sun_ability,
@@ -787,17 +909,23 @@ define([
               false,
               "green"
             );
+          } else if (existingBtn.style.display === 'none') {
+            // Button exists but is hidden - show it
+            existingBtn.style.display = '';
           }
-        } else {
-          // Remove button if not available or not active player
+        } else if (!inSolarFlareSelection) {
+          // Remove button if not available or not active player (but not if we're in selection mode)
           const btn = document.getElementById("sun_ability_btn");
-          if (btn) btn.remove();
+          if (btn && btn.style.display !== 'none') {
+            btn.remove();
+          }
         }
 
         // Add Pass button if it's the player's turn
-        if (stateName === "PlayerTurn" && this.isCurrentPlayerActive()) {
+        if (stateName === "PlayerTurn" && this.isCurrentPlayerActive() && !inSolarFlareSelection) {
           // Check if button already exists to avoid duplicates
-          if (!document.getElementById("pass_btn")) {
+          const existingBtn = document.getElementById("pass_btn");
+          if (!existingBtn) {
             this.addActionButton(
               "pass_btn",
               _("Pass"),
@@ -808,11 +936,16 @@ define([
               false,
               "gray"
             );
+          } else if (existingBtn.style.display === 'none') {
+            // Button exists but is hidden - show it
+            existingBtn.style.display = '';
           }
-        } else {
-          // Remove button if not active player
+        } else if (!inSolarFlareSelection) {
+          // Remove button if not active player (but not if we're in selection mode)
           const btn = document.getElementById("pass_btn");
-          if (btn) btn.remove();
+          if (btn && btn.style.display !== 'none') {
+            btn.remove();
+          }
         }
       }
 
@@ -1054,31 +1187,138 @@ define([
       return false;
     },
 
-    showSolarFlareDialog() {
-      const self = this;
-      const dialog = new ebg.popindialog();
-      dialog.create("solar_flare_dialog");
-      dialog.setTitle(_("Choose Solar Row"));
-      dialog.setContent(
-        '<div style="padding: 10px;">' +
-          '<p>' + _("Which solar row would you like to refresh?") + '</p>' +
-          '<div style="margin-top: 20px; text-align: center;">' +
-            '<button id="solar_flare_row1" style="margin: 5px; padding: 10px 20px; font-size: 16px;">Solar Row 1</button>' +
-            '<button id="solar_flare_row2" style="margin: 5px; padding: 10px 20px; font-size: 16px;">Solar Row 2</button>' +
-          '</div>' +
-        '</div>'
+    showSolarFlareRowButtons() {
+      // Hide the main Solar Flare button (but keep it in DOM for position)
+      const mainBtn = document.getElementById("solar_flare_btn");
+      if (mainBtn) {
+        mainBtn.style.display = 'none';
+      }
+      
+      // Hide other action buttons (Sun Ability, Pass) - store references to restore later
+      const sunAbilityBtn = document.getElementById("sun_ability_btn");
+      const passBtn = document.getElementById("pass_btn");
+      if (sunAbilityBtn) {
+        sunAbilityBtn.style.display = 'none';
+        this._hiddenSunAbilityBtn = sunAbilityBtn;
+      }
+      if (passBtn) {
+        passBtn.style.display = 'none';
+        this._hiddenPassBtn = passBtn;
+      }
+      
+      // Update status bar to indicate Solar Flare row selection
+      if (this.statusBar && this.statusBar.setTitle) {
+        const playerName = this.getPlayerName ? this.getPlayerName(this.player_id) : _("You");
+        this.statusBar.setTitle(playerName + " " + _("must select which row to solar flare"));
+        this._savedStatusTitle = this.gamedatas.gamestate.args?.descriptionMyTurn || this.gamedatas.gamestate.args?.description || '';
+      }
+      
+      // Add row selection buttons
+      this.addActionButton(
+        "solar_flare_row1_btn",
+        _("Solar Row 1"),
+        () => {
+          this.bgaPerformAction("actSolarFlare", { row: 1 });
+        },
+        null,
+        false,
+        "blue"
       );
-      dialog.show();
-
-      dojo.connect(dojo.byId("solar_flare_row1"), "onclick", () => {
-        dialog.destroy();
-        this.bgaPerformAction("actSolarFlare", { row: 1 });
-      });
-
-      dojo.connect(dojo.byId("solar_flare_row2"), "onclick", () => {
-        dialog.destroy();
-        this.bgaPerformAction("actSolarFlare", { row: 2 });
-      });
+      
+      this.addActionButton(
+        "solar_flare_row2_btn",
+        _("Solar Row 2"),
+        () => {
+          this.bgaPerformAction("actSolarFlare", { row: 2 });
+        },
+        null,
+        false,
+        "blue"
+      );
+      
+      this.addActionButton(
+        "solar_flare_cancel_btn",
+        _("Cancel"),
+        () => {
+          // Cancel: hide row buttons and restore main button (without consuming solar flare)
+          this.hideSolarFlareRowButtons();
+          // Show the main button again (it was hidden, not removed)
+          const mainBtn = document.getElementById("solar_flare_btn");
+          if (mainBtn) {
+            mainBtn.style.display = '';
+          }
+          
+          // Restore other action buttons
+          if (this._hiddenSunAbilityBtn) {
+            this._hiddenSunAbilityBtn.style.display = '';
+            this._hiddenSunAbilityBtn = null;
+          }
+          if (this._hiddenPassBtn) {
+            this._hiddenPassBtn.style.display = '';
+            this._hiddenPassBtn = null;
+          }
+          
+          // Restore original status bar description
+          if (this.statusBar && this.statusBar.setTitle && this._savedStatusTitle) {
+            const stateArgs = this.gamedatas.gamestate.args || {};
+            let description = this._savedStatusTitle;
+            
+            // Replace placeholders if needed
+            if (this.isCurrentPlayerActive && this.isCurrentPlayerActive()) {
+              if (description.includes('${you}') && this.getPlayerName && this.player_id) {
+                description = description.replace('${you}', this.getPlayerName(this.player_id));
+              }
+              if (description.includes('${actplayer}') && this.getPlayerName && this.player_id) {
+                description = description.replace('${actplayer}', this.getPlayerName(this.player_id));
+              }
+            }
+            
+            // Replace action placeholders if available
+            if (stateArgs.available_actions && Array.isArray(stateArgs.available_actions) && stateArgs.available_actions.length > 0) {
+              const translatedActions = stateArgs.available_actions.map(action => {
+                if (!action) return '';
+                const translated = _(action);
+                return translated.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ');
+              }).filter(a => a);
+              
+              if (translatedActions.length === 1) {
+                description = description.replace('${action}', translatedActions[0]);
+              } else if (translatedActions.length > 1) {
+                const actionList = translatedActions.slice(0, -1).join(', ') + ' ' + _('or') + ' ' + translatedActions[translatedActions.length - 1];
+                description = description.replace('${actionList}', actionList);
+              }
+            }
+            
+            this.statusBar.setTitle(description);
+            this._savedStatusTitle = null;
+          }
+        },
+        null,
+        false,
+        "gray"
+      );
+    },
+    
+    hideSolarFlareRowButtons() {
+      // Remove row selection buttons
+      const r1 = document.getElementById("solar_flare_row1_btn");
+      const r2 = document.getElementById("solar_flare_row2_btn");
+      const cancel = document.getElementById("solar_flare_cancel_btn");
+      if (r1) r1.remove();
+      if (r2) r2.remove();
+      if (cancel) cancel.remove();
+    },
+    
+    hideSolarFlareButtons() {
+      // Remove all Solar Flare related buttons
+      const btn = document.getElementById("solar_flare_btn");
+      const r1 = document.getElementById("solar_flare_row1_btn");
+      const r2 = document.getElementById("solar_flare_row2_btn");
+      const cancel = document.getElementById("solar_flare_cancel_btn");
+      if (btn) btn.remove();
+      if (r1) r1.remove();
+      if (r2) r2.remove();
+      if (cancel) cancel.remove();
     },
 
     addCardBackToDeck(card) {
@@ -1360,6 +1600,24 @@ define([
       const discardedCards = notif.discardedCards || [];
       const newCards = notif.newCards || [];
 
+      // Hide all Solar Flare buttons if this player used it
+      if (notif.player_id === this.player_id) {
+        this.hideSolarFlareButtons();
+        
+        // Restore other action buttons that were hidden during selection
+        if (this._hiddenSunAbilityBtn) {
+          this._hiddenSunAbilityBtn.style.display = '';
+          this._hiddenSunAbilityBtn = null;
+        }
+        if (this._hiddenPassBtn) {
+          this._hiddenPassBtn.style.display = '';
+          this._hiddenPassBtn = null;
+        }
+        
+        // Clear saved status title
+        this._savedStatusTitle = null;
+      }
+
       // Update deck count
       if (notif.cardsRemaining !== undefined) {
         document.getElementById("deck-count").innerText = notif.cardsRemaining;
@@ -1404,10 +1662,9 @@ define([
         }
       }
 
-      // Hide the Solar Flare button if this player used it
+      // Hide all Solar Flare buttons if this player used it
       if (notif.player_id === this.player_id) {
-        const btn = document.getElementById("solar_flare_btn");
-        if (btn) btn.remove();
+        this.hideSolarFlareButtons();
       }
     },
 

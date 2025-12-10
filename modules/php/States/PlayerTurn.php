@@ -19,8 +19,8 @@ class PlayerTurn extends GameState
             $game,
             id: 10,
             type: StateType::ACTIVE_PLAYER,
-            description: clienttranslate('${actplayer} must DRAFT or PLAY a card'),
-            descriptionMyTurn: clienttranslate('${you} must DRAFT or PLAY a card'),
+            description: clienttranslate('${actplayer} must take an action'),
+            descriptionMyTurn: clienttranslate('${you} must take an action'),
         );
     }
 
@@ -76,6 +76,24 @@ class PlayerTurn extends GameState
     {
         // Get some values from the current game situation from the database.
         $activePlayerId = (int) $this->game->getActivePlayerId();
+        
+        // Safety check: if no active player, return default values
+        if (!$activePlayerId || $activePlayerId == 0) {
+            return [
+                "mustPlayPlanet" => false,
+                'open_actions' => 0,
+                'draft_actions' => 0,
+                'draw_actions' => 0,
+                'play_actions' => 0,
+                'total_actions' => 0,
+                'solar_flare_available' => false,
+                'sun_ability' => null,
+                'sun_ability_available' => false,
+                'description' => '',
+                'descriptionMyTurn' => '',
+                'available_actions' => [],
+            ];
+        }
 
         // Check if player has any planets
         $hasPlanets = (int) $this->game->getUniqueValueFromDB("
@@ -89,16 +107,73 @@ class PlayerTurn extends GameState
         $abilityId = $this->game->sun_ability_id->get($activePlayerId);
         $sunAbility = $this->game->getSunAbilityName($abilityId);
         
+        // Build dynamic description based on available actions
+        $openActions = $this->game->open_actions->get($activePlayerId);
+        $draftActions = $this->game->draft_actions->get($activePlayerId);
+        $drawActions = $this->game->draw_actions->get($activePlayerId);
+        $playActions = $this->game->play_actions->get($activePlayerId);
+        // Normalize playActions (ignore Shell Star's 999)
+        if ($playActions > 100) {
+            $playActions = 0;
+        }
+        
+        $totalActions = $openActions + $draftActions + $drawActions + $playActions;
+        $solarFlareAvailable = $this->game->solar_flare_used->get($activePlayerId) == 0;
+        $sunAbilityAvailable = $this->game->sun_ability_used->get($activePlayerId) == 0 && $abilityId > 0;
+        
+        // Build list of available actions with natural language
+        // Priority: specific actions first, then open action, then sun abilities, then pass
+        $availableActions = [];
+        
+        // Add specific actions first (if they have dedicated actions)
+        if ($draftActions > 0) {
+            $availableActions[] = 'draft';
+        }
+        if ($drawActions > 0) {
+            $availableActions[] = 'draw';
+        }
+        if ($playActions > 0) {
+            $availableActions[] = 'play';
+        }
+        
+        // Add open action if available (always show it when they have open actions)
+        if ($openActions > 0) {
+            $availableActions[] = 'use your open action';
+        }
+        
+        // Add sun abilities if available
+        if ($solarFlareAvailable) {
+            $availableActions[] = 'use Solar Flare';
+        }
+        if ($sunAbilityAvailable && $sunAbility) {
+            $availableActions[] = 'use ' . $sunAbility;
+        }
+        
+        // Always add pass at the end
+        $availableActions[] = 'pass';
+        
+        // Build description text with natural language
+        if (count($availableActions) == 1) {
+            $description = '${actplayer} must ${action}';
+            $descriptionMyTurn = '${you} must ${action}';
+        } else {
+            $description = '${actplayer} must ${actionList}';
+            $descriptionMyTurn = '${you} must ${actionList}';
+        }
+        
         return [
             "mustPlayPlanet" => !$hasPlanets,
-            'open_actions' => $this->game->open_actions->get($activePlayerId),
-            'draft_actions' => $this->game->draft_actions->get($activePlayerId),
-            'draw_actions' => $this->game->draw_actions->get($activePlayerId),
-            'play_actions' => $this->game->play_actions->get($activePlayerId),
-            'total_actions' => $this->getTotalActions($activePlayerId),
-            'solar_flare_available' => $this->game->solar_flare_used->get($activePlayerId) == 0,
+            'open_actions' => $openActions,
+            'draft_actions' => $draftActions,
+            'draw_actions' => $drawActions,
+            'play_actions' => $playActions,
+            'total_actions' => $totalActions,
+            'solar_flare_available' => $solarFlareAvailable,
             'sun_ability' => $sunAbility,
-            'sun_ability_available' => $this->game->sun_ability_used->get($activePlayerId) == 0 && $abilityId > 0
+            'sun_ability_available' => $sunAbilityAvailable,
+            'description' => $description,
+            'descriptionMyTurn' => $descriptionMyTurn,
+            'available_actions' => $availableActions,
         ];
     }
 
