@@ -165,6 +165,22 @@ define([
           direction: "row", // <-- optional: horizontal
         }
       );
+      
+      // Disable floating behavior - override watchFloatingState to prevent cards from floating to bottom
+      // HandStock automatically floats to bottom when not visible - we want to disable this
+      const originalWatchFloating = this.handStock.watchFloatingState;
+      if (originalWatchFloating) {
+        this.handStock.watchFloatingState = function() {
+          // Override to do nothing - prevents floating to bottom of viewport
+          // Cards will stay in their original position in the hand container
+        };
+      }
+      
+      // Also prevent floating by setting the threshold to an impossible value
+      if (this.handStock.floatingThreshold !== undefined) {
+        this.handStock.floatingThreshold = 9999; // Set threshold so high it never triggers
+      }
+      
       //can only play one card from hand - might change this select to only matter for moons since that's the only time you have a choice where a card goes
       this.handStock.setSelectionMode("single", {
         unselectOnClick: true,
@@ -303,6 +319,16 @@ define([
           return;
         }
 
+        // Check if player has draft actions available
+        const playerId = this.player_id;
+        const openActions = this.counters[playerId].open_actions.getValue();
+        const draftActions = this.counters[playerId].draft_actions.getValue();
+        
+        if (openActions === 0 && draftActions === 0) {
+          this.showMessage(_("You don't have any DRAFT actions available"), "error");
+          return;
+        }
+
         const slot = parseInt(card.location_arg);
         console.log("Drafting from row 1, slot", slot);
 
@@ -310,6 +336,8 @@ define([
           card_id: parseInt(card.id),
           row: 1,
           slot: slot,
+        }).catch((error) => {
+          console.log("Draft action failed:", error);
         });
       };
 
@@ -322,6 +350,16 @@ define([
           return;
         }
 
+        // Check if player has draft actions available
+        const playerId = this.player_id;
+        const openActions = this.counters[playerId].open_actions.getValue();
+        const draftActions = this.counters[playerId].draft_actions.getValue();
+        
+        if (openActions === 0 && draftActions === 0) {
+          this.showMessage(_("You don't have any DRAFT actions available"), "error");
+          return;
+        }
+
         const slot = parseInt(card.location_arg);
         console.log("Drafting from row 2, slot", slot);
 
@@ -329,6 +367,8 @@ define([
           card_id: parseInt(card.id),
           row: 2,
           slot: slot,
+        }).catch((error) => {
+          console.log("Draft action failed:", error);
         });
       };
 
@@ -608,8 +648,17 @@ define([
 
         for (let entry of counterList) {
           const counter = new ebg.counter();
-          counter.create(entry.id);
-          counter.setValue(entry.default);
+          // Link action counters to server-side PlayerCounter for automatic updates
+          if (entry.name === 'open_actions' || entry.name === 'draft_actions' || 
+              entry.name === 'draw_actions' || entry.name === 'play_actions') {
+            counter.create(entry.id, {
+              playerCounter: entry.name,
+              playerId: playerId
+            });
+          } else {
+            counter.create(entry.id);
+            counter.setValue(entry.default);
+          }
           this.counters[playerId][entry.name] = counter;
         }
       }
@@ -631,20 +680,23 @@ define([
       switch (stateName) {
         case "PlayerTurn":
           // Update action counters when entering PlayerTurn state
-          if (args) {
+          // Note: args might be nested as args.args depending on BGA framework version
+          const stateArgs = args?.args || args;
+          if (stateArgs) {
             const activePlayerId = this.getActivePlayerId();
             if (activePlayerId && this.counters && this.counters[activePlayerId]) {
-              if (args.open_actions !== undefined) {
-                this.counters[activePlayerId].open_actions.setValue(args.open_actions);
+              console.log("Updating action counters in onEnteringState:", stateArgs);
+              if (stateArgs.open_actions !== undefined) {
+                this.counters[activePlayerId].open_actions.toValue(stateArgs.open_actions);
               }
-              if (args.draft_actions !== undefined) {
-                this.counters[activePlayerId].draft_actions.setValue(args.draft_actions);
+              if (stateArgs.draft_actions !== undefined) {
+                this.counters[activePlayerId].draft_actions.toValue(stateArgs.draft_actions);
               }
-              if (args.draw_actions !== undefined) {
-                this.counters[activePlayerId].draw_actions.setValue(args.draw_actions);
+              if (stateArgs.draw_actions !== undefined) {
+                this.counters[activePlayerId].draw_actions.toValue(stateArgs.draw_actions);
               }
-              if (args.play_actions !== undefined) {
-                this.counters[activePlayerId].play_actions.setValue(args.play_actions);
+              if (stateArgs.play_actions !== undefined) {
+                this.counters[activePlayerId].play_actions.toValue(stateArgs.play_actions);
               }
             }
           }
@@ -679,20 +731,22 @@ define([
       console.log("onUpdateActionButtons: " + stateName, args);
 
       // Update action counters when action buttons are updated (for all players, not just active)
+      // This is called BEFORE onEnteringState, so we need to update counters here too
       if (stateName === "PlayerTurn" && args) {
         const activePlayerId = this.getActivePlayerId();
         if (activePlayerId && this.counters && this.counters[activePlayerId]) {
+          console.log("Updating action counters in onUpdateActionButtons:", args);
           if (args.open_actions !== undefined) {
-            this.counters[activePlayerId].open_actions.setValue(args.open_actions);
+            this.counters[activePlayerId].open_actions.toValue(args.open_actions);
           }
           if (args.draft_actions !== undefined) {
-            this.counters[activePlayerId].draft_actions.setValue(args.draft_actions);
+            this.counters[activePlayerId].draft_actions.toValue(args.draft_actions);
           }
           if (args.draw_actions !== undefined) {
-            this.counters[activePlayerId].draw_actions.setValue(args.draw_actions);
+            this.counters[activePlayerId].draw_actions.toValue(args.draw_actions);
           }
           if (args.play_actions !== undefined) {
-            this.counters[activePlayerId].play_actions.setValue(args.play_actions);
+            this.counters[activePlayerId].play_actions.toValue(args.play_actions);
           }
         }
 
@@ -908,6 +962,27 @@ define([
         return;
       }
 
+      //******CHECK IF PLAYER HAS ACTIONS AVAILABLE
+      const openActions = this.counters[playerId].open_actions.getValue();
+      let playActions = this.counters[playerId].play_actions.getValue();
+      // Ignore Shell Star's 999 value
+      if (playActions > 100) {
+        playActions = 0;
+      }
+      
+      // Check if player has actions available
+      // Note: Shell Star allows unlimited moon plays, but we can't check that from client
+      // So we'll check actions for all cards including moons, and let the server handle Shell Star exception
+      // The server will reject if Shell Star isn't active and there are no actions
+      if (openActions === 0 && playActions === 0) {
+        this.showMessage(
+          _("You don't have any PLAY actions available"),
+          "error"
+        );
+        this.handStock.unselectAll();
+        return;
+      }
+
       //******MUST PLAY PLANET FIRST
       const blue = this.counters[playerId].blue.getValue(playerId);
       const green = this.counters[playerId].green.getValue(playerId);
@@ -1031,7 +1106,19 @@ define([
         return;
       }
 
-      this.bgaPerformAction("actDrawCard");
+      // Check if player has draw actions available
+      const playerId = this.player_id;
+      const openActions = this.counters[playerId].open_actions.getValue();
+      const drawActions = this.counters[playerId].draw_actions.getValue();
+      
+      if (openActions === 0 && drawActions === 0) {
+        this.showMessage(_("You don't have any DRAW actions available"), "error");
+        return;
+      }
+
+      this.bgaPerformAction("actDrawCard").catch((error) => {
+        console.log("Draw action failed:", error);
+      });
     },
 
   /*------------------------------------------------------------------------------------/

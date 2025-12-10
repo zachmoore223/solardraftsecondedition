@@ -91,6 +91,7 @@
     box-shadow: none !important;
     margin-top: 20px;
 }
+
 #player-hand_wrap {
     position: relative;
     min-height: 250px; /* Reserve space so container doesn't collapse */
@@ -101,8 +102,8 @@
     position: relative !important;
     min-height: 236px;
     width: 100%;
-    /* Let the HandStock manage internal positioning */
 }
+
 
 /* Ensure the whiteblock stays in place */
 #player-hand_wrap.whiteblock {

@@ -187,7 +187,9 @@ class Game extends \Bga\GameFramework\Table
         parent::__construct();
 
         $this->initGameStateLabels([
-            'pending_moon_card_id' => 10, // Add this line
+            'pending_moon_card_id' => 10,
+            'shell_star_active' => 11, // Player ID for Shell Star ability (only moons can be played)
+            'last_turn_player' => 12, // Track the last player who received starting action
         ]); // mandatory, even if the array is empty
 
         $this->blue_planet_count = $this->counterFactory->createPlayerCounter('blue_planet_count');

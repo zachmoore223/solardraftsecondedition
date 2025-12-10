@@ -24,6 +24,43 @@ class PlayerTurn extends GameState
         );
     }
 
+    /**
+     * Called when entering PlayerTurn state - grant starting action only once per turn
+     */
+    public function onEnteringState(int $activePlayerId): void
+    {
+        // Clear Shell Star flag at the start of each turn (unless it's still active for this player)
+        // Shell Star should only be active during the turn it's used, not persist across turns
+        $shellStarActive = $this->game->getGameStateValue('shell_star_active');
+        if ($shellStarActive != $activePlayerId && $shellStarActive > 0) {
+            // Clear Shell Star if it was set for a different player
+            $this->game->setGameStateValue('shell_star_active', 0);
+            // Also clear the 999 play_actions if it exists
+            $playActions = $this->game->play_actions->get($activePlayerId);
+            if ($playActions > 100) {
+                $this->game->play_actions->set($activePlayerId, 0);
+            }
+        }
+        
+        // Only grant starting action if this is a NEW turn (player changed)
+        // Check if this is the same player as last turn
+        $lastTurnPlayer = $this->game->getGameStateValue('last_turn_player');
+        
+        // If player changed, this is a new turn - grant starting action
+        if ($lastTurnPlayer != $activePlayerId) {
+            // Update the last turn player
+            $this->game->setGameStateValue('last_turn_player', $activePlayerId);
+            
+            // Grant 1 open action at the start of the turn (only if they have no actions)
+            $totalActions = $this->getTotalActions($activePlayerId);
+            if ($totalActions == 0) {
+                // Use set with an empty notification message to ensure the counter updates on client
+                $this->game->open_actions->set($activePlayerId, 1, new \Bga\GameFramework\NotificationMessage(''));
+            }
+        }
+        // If same player, don't grant action - they're returning to PlayerTurn after an action
+    }
+
     public function stMoonPlacement()
     {
         // This is called when entering the state
@@ -39,14 +76,6 @@ class PlayerTurn extends GameState
     {
         // Get some values from the current game situation from the database.
         $activePlayerId = (int) $this->game->getActivePlayerId();
-
-        // Calculate total actions
-        $totalActions = $this->getTotalActions($activePlayerId);
-        
-        // If this is the start of their turn (no actions), give them 1 open action
-        if ($totalActions == 0) {
-            $this->game->open_actions->set($activePlayerId, 1);
-        }
 
         // Check if player has any planets
         $hasPlanets = (int) $this->game->getUniqueValueFromDB("
@@ -75,10 +104,16 @@ class PlayerTurn extends GameState
 
     private function getTotalActions(int $playerId): int
     {
+        // Ignore Shell Star's 999 play_actions value when calculating total
+        $playActions = $this->game->play_actions->get($playerId);
+        if ($playActions > 100) {
+            $playActions = 0; // Shell Star's 999 doesn't count as real actions
+        }
+        
         return $this->game->open_actions->get($playerId)
             + $this->game->draft_actions->get($playerId)
             + $this->game->draw_actions->get($playerId)
-            + $this->game->play_actions->get($playerId);
+            + $playActions;
     }
 
     /**
@@ -107,37 +142,83 @@ class PlayerTurn extends GameState
             || $this->game->draw_actions->get($playerId) > 0;
     }
 
-    private function canPlay(int $playerId): bool
+    private function canPlay(int $playerId, ?string $cardType = null): bool
     {
+        // Check if Shell Star is active
+        $shellStarActive = $this->game->getGameStateValue('shell_star_active');
+        if ($shellStarActive == $playerId) {
+            // Shell Star only allows moon plays (unlimited, no action check needed)
+            return $cardType === 'moon';
+        }
+        
+        // Normal play - check if player has actions
+        // For moons, we still need actions unless Shell Star is active (checked above)
+        // Ignore play_actions if it's 999 (Shell Star's unlimited value)
+        $playActions = $this->game->play_actions->get($playerId);
+        if ($playActions > 100) {
+            // This is Shell Star's 999 - don't count it for normal plays
+            $playActions = 0;
+        }
+        
+        // All cards (including moons) require actions when Shell Star is not active
         return $this->game->open_actions->get($playerId) > 0
-            || $this->game->play_actions->get($playerId) > 0;
+            || $playActions > 0;
     }
 
     private function consumeAction(int $playerId, string $actionType)
     {
+        // Check if Shell Star is active for play actions
+        $shellStarActive = $this->game->getGameStateValue('shell_star_active');
+        if ($actionType === 'play' && $shellStarActive == $playerId) {
+            // Shell Star allows unlimited moon plays - don't consume actions
+            return;
+        }
+        
         // Try to use specific action first, then fall back to open action
+        // Ensure we actually have actions to consume
         switch ($actionType) {
             case 'draft':
-                if ($this->game->draft_actions->get($playerId) > 0) {
+                $draftActions = $this->game->draft_actions->get($playerId);
+                $openActions = $this->game->open_actions->get($playerId);
+                if ($draftActions > 0 && $draftActions <= 100) { // Ignore Shell Star's 999
                     $this->game->draft_actions->inc($playerId, -1);
-                } else {
+                } elseif ($openActions > 0) {
                     $this->game->open_actions->inc($playerId, -1);
+                } else {
+                    throw new UserException("No actions available to consume.");
                 }
                 break;
             case 'draw':
-                if ($this->game->draw_actions->get($playerId) > 0) {
+                $drawActions = $this->game->draw_actions->get($playerId);
+                $openActions = $this->game->open_actions->get($playerId);
+                if ($drawActions > 0 && $drawActions <= 100) { // Ignore Shell Star's 999
                     $this->game->draw_actions->inc($playerId, -1);
-                } else {
+                } elseif ($openActions > 0) {
                     $this->game->open_actions->inc($playerId, -1);
+                } else {
+                    throw new UserException("No actions available to consume.");
                 }
                 break;
             case 'play':
-                if ($this->game->play_actions->get($playerId) > 0) {
+                $playActions = $this->game->play_actions->get($playerId);
+                $openActions = $this->game->open_actions->get($playerId);
+                if ($playActions > 0 && $playActions <= 100) { // Ignore Shell Star's 999
                     $this->game->play_actions->inc($playerId, -1);
-                } else {
+                } elseif ($openActions > 0) {
                     $this->game->open_actions->inc($playerId, -1);
+                } else {
+                    throw new UserException("No actions available to consume.");
                 }
                 break;
+        }
+        
+        // Ensure counters don't go negative
+        $this->game->open_actions->set($playerId, max(0, $this->game->open_actions->get($playerId)));
+        $this->game->draft_actions->set($playerId, max(0, $this->game->draft_actions->get($playerId)));
+        $this->game->draw_actions->set($playerId, max(0, $this->game->draw_actions->get($playerId)));
+        $playActionsFinal = $this->game->play_actions->get($playerId);
+        if ($playActionsFinal <= 100) { // Only cap normal play actions, not Shell Star's 999
+            $this->game->play_actions->set($playerId, max(0, $playActionsFinal));
         }
     }
 
@@ -147,22 +228,30 @@ class PlayerTurn extends GameState
     #[PossibleAction]
     public function actPlayCard(int $card_id, int $activePlayerId, ?int $target_planet_id = null)
     {   
+        // Get card first to check type
+        $card = $this->game->cards->getCard($card_id);
+        
         // Check if Shell Star is active - if so, only moons can be played
         $shellStarActive = $this->game->getGameStateValue('shell_star_active');
         if ($shellStarActive == $activePlayerId) {
-            $card = $this->game->cards->getCard($card_id);
             if ($card['type'] !== 'moon') {
                 throw new UserException("Shell Star ability is active - you can only play MOONS.");
             }
         }
         
-        // Check if player can play
-        if (!$this->canPlay($activePlayerId)) {
-            throw new UserException("You don't have any PLAY actions available.");
+        // Check if player can play (pass card type to canPlay for Shell Star check)
+        // This is the critical check - must have actions to play
+        $openActions = $this->game->open_actions->get($activePlayerId);
+        $playActions = $this->game->play_actions->get($activePlayerId);
+        // Normalize playActions (ignore Shell Star's 999)
+        if ($playActions > 100) {
+            $playActions = 0;
         }
-
-        // Take card from player's hand
-        $card = $this->game->cards->getCard($card_id);
+        
+        if (!$this->canPlay($activePlayerId, $card['type'])) {
+            throw new UserException("You don't have any PLAY actions available. Open: $openActions, Play: $playActions");
+        }
+        
         $newRingCount = 0;
         $newValue = 0;
 
@@ -173,7 +262,42 @@ class PlayerTurn extends GameState
         $shellStarActive = $this->game->getGameStateValue('shell_star_active');
         if (!($shellStarActive == $activePlayerId && $card['type'] === 'moon')) {
             // Consume the action FIRST (before granting new actions from the card)
+            // Double-check we still have actions before consuming (race condition protection)
+            if (!$this->canPlay($activePlayerId, $card['type'])) {
+                throw new UserException("You don't have any PLAY actions available.");
+            }
+            
+            // Store action counts before consumption for verification
+            $openBefore = $this->game->open_actions->get($activePlayerId);
+            $playBefore = $this->game->play_actions->get($activePlayerId);
+            // Normalize playBefore (ignore Shell Star's 999)
+            if ($playBefore > 100) {
+                $playBefore = 0;
+            }
+            
             $this->consumeAction($activePlayerId, 'play');
+            
+            // Verify action was actually consumed (check immediately after consumption, before card grants actions)
+            $openAfterConsume = $this->game->open_actions->get($activePlayerId);
+            $playAfterConsume = $this->game->play_actions->get($activePlayerId);
+            // Normalize playAfterConsume (ignore Shell Star's 999)
+            if ($playAfterConsume > 100) {
+                $playAfterConsume = 0;
+            }
+            
+            // At least one counter should have decreased after consumption
+            // (before card grants new actions)
+            if ($openAfterConsume >= $openBefore && $playAfterConsume >= $playBefore) {
+                throw new UserException("Action consumption failed - no actions were consumed. Open: $openBefore -> $openAfterConsume, Play: $playBefore -> $playAfterConsume");
+            }
+            
+            // Final verification: ensure we actually consumed an action
+            // If we had actions before and still have the same or more after, something is wrong
+            $totalBefore = $openBefore + $playBefore;
+            $totalAfterConsume = $openAfterConsume + $playAfterConsume;
+            if ($totalAfterConsume >= $totalBefore) {
+                throw new UserException("Action consumption verification failed - total actions did not decrease. Before: $totalBefore, After: $totalAfterConsume");
+            }
         }
 
         //Add any actions granted from card to current player's action count
@@ -417,6 +541,11 @@ class PlayerTurn extends GameState
     public function actDrawCard(int $activePlayerId)
     {
         // Check if player can draw
+        if (!$this->canDraw($activePlayerId)) {
+            throw new UserException("You don't have any DRAW actions available.");
+        }
+
+        // Double-check we still have actions before consuming (race condition protection)
         if (!$this->canDraw($activePlayerId)) {
             throw new UserException("You don't have any DRAW actions available.");
         }
