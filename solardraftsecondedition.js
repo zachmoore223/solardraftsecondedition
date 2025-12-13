@@ -136,9 +136,9 @@ define([
 
                 <!-- Row 2, Col 2 --> 
                 <div id="discard-pile_wrap" class="whiteblock">
-                    <b class="section-label-discard">Discard Pile (<span id="deck-count">${cardsInDiscard}</span>)</b>  
+                    <b class="section-label-discard">Discard Pile (<span id="discard-count">${cardsInDiscard}</span>)</b>  
                     <div id="discard-pile"></div>
-                <div>
+                </div>
 
             </div>
 
@@ -227,24 +227,29 @@ define([
         Array.from(Object.values(this.gamedatas.discardPile))
       );
 
-      // DiscardDeck doesn't support onCardClick directly
-      // You need to use setSelectionMode and onSelectionChange instead
-      this.discardDeck.setSelectionMode("single");
+      // Disable card selection - we just want to show the expanded view when clicking
+      this.discardDeck.setSelectionMode("none");
 
-      this.discardDeck.onSelectionChange = (selection, lastChange) => {
-        console.log("=== DISCARD PILE CARD SELECTED ===");
-        console.log("Selected cards:", selection);
-        console.log("Last changed card:", lastChange);
+      // Make the entire discard pile area clickable to show expanded view
+      const discardPileWrap = document.getElementById("discard-pile_wrap");
+      if (discardPileWrap) {
+        // Add pointer cursor to indicate it's clickable
+        discardPileWrap.style.cursor = "pointer";
+        
+        // Single click handler for the entire area
+        discardPileWrap.addEventListener("click", (e) => {
+          // Toggle the discard pile view
+          if (this.discardPileViewVisible) {
+            this.hideDiscardPileView();
+          } else {
+            this.showDiscardPileView();
+          }
+        });
+      }
 
-        if (selection.length > 0) {
-          const card = selection[0];
-          console.log("Selected card from discard:", card);
-
-          // Do something with the selected card
-          // For example:
-          // this.bgaPerformAction("actTakeFromDiscard", { card_id: parseInt(card.id) });
-        }
-      };
+      // Initialize discard pile view state
+      this.discardPileViewVisible = false;
+      this.discardPileViewStock = null;
 
       /*******************************
        *          SOLAR ROWS          *
@@ -1361,6 +1366,203 @@ define([
       });
     },
 
+
+    showDiscardPileView: async function () {
+      // Check if view already exists
+      let viewContainer = document.getElementById("discard-pile-view-container");
+      
+      if (!viewContainer) {
+        // Create the container div above solar-grid
+        const solarArea = document.getElementById("solar-area");
+        viewContainer = document.createElement("div");
+        viewContainer.id = "discard-pile-view-container";
+        viewContainer.className = "whiteblock";
+        viewContainer.style.marginBottom = "10px";
+        
+        // Insert before solar-grid
+        const solarGrid = document.getElementById("solar-grid");
+        solarArea.insertBefore(viewContainer, solarGrid);
+        
+        // Create header with close button
+        const header = document.createElement("div");
+        header.style.display = "flex";
+        header.style.justifyContent = "space-between";
+        header.style.alignItems = "center";
+        header.style.marginBottom = "10px";
+        
+        const title = document.createElement("b");
+        title.className = "section-label";
+        title.textContent = _("Discard Pile - All Cards");
+        
+        const closeBtn = document.createElement("button");
+        closeBtn.textContent = _("Close");
+        closeBtn.className = "bgabutton bgabutton_blue";
+        closeBtn.style.padding = "5px 15px";
+        closeBtn.onclick = () => this.hideDiscardPileView();
+        
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+        viewContainer.appendChild(header);
+        
+        // Create container for cards
+        const cardsContainer = document.createElement("div");
+        cardsContainer.id = "discard-pile-view-cards";
+        cardsContainer.style.display = "flex";
+        cardsContainer.style.flexWrap = "wrap";
+        cardsContainer.style.gap = "10px";
+        cardsContainer.style.justifyContent = "flex-start";
+        viewContainer.appendChild(cardsContainer);
+        
+        // Create a LineStock for displaying cards
+        this.discardPileViewStock = new BgaCards.LineStock(
+          this.cardsManager,
+          cardsContainer,
+          {
+            gap: "10px",
+            selectableCardStyle: {
+              outlineSize: 0,
+            },
+            selectedCardStyle: {
+              outlineColor: "rgba(255, 0, 221, 0.6)",
+            },
+          }
+        );
+      }
+      
+      // Get all cards from discard pile
+      const discardCards = Array.from(Object.values(this.gamedatas.discardPile || {}));
+      
+      // Clear existing cards and add all discard cards
+      if (this.discardPileViewStock) {
+        // Remove all existing cards
+        if (this.discardPileViewStock.items && this.discardPileViewStock.items.length > 0) {
+          const itemsCopy = Array.from(this.discardPileViewStock.items);
+          for (let item of itemsCopy) {
+            if (item && item.id) {
+              try {
+                await this.discardPileViewStock.removeCard(item);
+              } catch (e) {
+                console.warn("Error removing card from discard view:", e);
+              }
+            }
+          }
+        }
+        
+        // Add all discard cards
+        for (let card of discardCards) {
+          try {
+            await this.discardPileViewStock.addCard(card);
+          } catch (e) {
+            console.warn("Error adding card to discard view:", e);
+          }
+        }
+      }
+      
+      // Show the container
+      viewContainer.style.display = "block";
+      this.discardPileViewVisible = true;
+      
+      // Ensure the original discard pile wrapper is still visible
+      const discardPileWrap = document.getElementById("discard-pile_wrap");
+      if (discardPileWrap) {
+        discardPileWrap.style.display = "";
+      }
+    },
+
+    hideDiscardPileView: async function () {
+      const viewContainer = document.getElementById("discard-pile-view-container");
+      if (viewContainer) {
+        viewContainer.style.display = "none";
+      }
+      this.discardPileViewVisible = false;
+      
+      // Clear the view stock to release cards back to the manager
+      if (this.discardPileViewStock && this.discardPileViewStock.items && this.discardPileViewStock.items.length > 0) {
+        const itemsCopy = Array.from(this.discardPileViewStock.items);
+        for (let item of itemsCopy) {
+          if (item && item.id) {
+            try {
+              await this.discardPileViewStock.removeCard(item);
+            } catch (e) {
+              console.warn("Error removing card from view stock:", e);
+            }
+          }
+        }
+      }
+      
+      // Rebuild discardDeck from gamedatas to ensure it's properly restored
+      // The BGA Cards library moves cards between stocks, so we need to rebuild
+      if (this.discardDeck && this.gamedatas.discardPile) {
+        // Remove all cards from discardDeck first
+        if (this.discardDeck.items && this.discardDeck.items.length > 0) {
+          const itemsCopy = Array.from(this.discardDeck.items);
+          for (let item of itemsCopy) {
+            if (item && item.id) {
+              try {
+                await this.discardDeck.removeCard(item);
+              } catch (e) {
+                console.warn("Error removing card from discardDeck:", e);
+              }
+            }
+          }
+        }
+        
+        // Add all cards from gamedatas back to discardDeck
+        const discardCards = Array.from(Object.values(this.gamedatas.discardPile));
+        for (let card of discardCards) {
+          try {
+            await this.discardDeck.addCard(card);
+          } catch (e) {
+            console.warn("Error adding card to discardDeck:", e);
+          }
+        }
+      }
+      
+      // Ensure the original discard pile wrapper is visible
+      const discardPileWrap = document.getElementById("discard-pile_wrap");
+      if (discardPileWrap) {
+        discardPileWrap.style.display = "";
+      }
+      
+      // Ensure the discard pile container itself is visible
+      const discardPile = document.getElementById("discard-pile");
+      if (discardPile) {
+        discardPile.style.display = "";
+      }
+    },
+
+    refreshDiscardPileView: async function () {
+      if (!this.discardPileViewVisible || !this.discardPileViewStock) {
+        return;
+      }
+
+      // Get all cards from discard pile
+      const discardCards = Array.from(Object.values(this.gamedatas.discardPile || {}));
+      
+      // Remove all existing cards
+      if (this.discardPileViewStock.items && this.discardPileViewStock.items.length > 0) {
+        const itemsCopy = Array.from(this.discardPileViewStock.items);
+        for (let item of itemsCopy) {
+          if (item && item.id) {
+            try {
+              await this.discardPileViewStock.removeCard(item);
+            } catch (e) {
+              console.warn("Error removing card from discard view:", e);
+            }
+          }
+        }
+      }
+      
+      // Add all discard cards
+      for (let card of discardCards) {
+        try {
+          await this.discardPileViewStock.addCard(card);
+        } catch (e) {
+          console.warn("Error adding card to discard view:", e);
+        }
+      }
+    },
+
   /*------------------------------------------------------------------------------------/
                                     NOTIFICATIONS
   /*------------------------------------------------------------------------------------/
@@ -1646,6 +1848,11 @@ define([
       // Add discarded cards to discard pile
       for (let card of discardedCards) {
         await this.discardDeck.addCard(card);
+        // Update gamedatas discard pile
+        if (!this.gamedatas.discardPile) {
+          this.gamedatas.discardPile = {};
+        }
+        this.gamedatas.discardPile[card.id] = card;
       }
 
       // Add new cards to the solar row
@@ -1656,10 +1863,15 @@ define([
 
       // Update discard count display
       if (notif.cardsInDiscard !== undefined) {
-        const discardCountEl = document.getElementById("deck-count");
+        const discardCountEl = document.getElementById("discard-count");
         if (discardCountEl) {
           discardCountEl.innerText = notif.cardsInDiscard;
         }
+      }
+
+      // Refresh discard pile view if it's visible
+      if (this.discardPileViewVisible) {
+        this.refreshDiscardPileView();
       }
 
       // Hide all Solar Flare buttons if this player used it

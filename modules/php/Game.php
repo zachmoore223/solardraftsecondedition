@@ -18,7 +18,7 @@
 
 declare(strict_types=1);
 
-namespace Bga\Games\SolarDraftSecondEdition;
+namespace Bga\Games\solarDraftSecondEdition;
 
 use Bga\Games\SolarDraftSecondEdition\States\PlayerTurn;
 use Bga\GameFramework\Components\Counters\PlayerCounter;
@@ -283,7 +283,7 @@ class Game extends \Bga\GameFramework\Table
             $result["players"] = $this->getCollectionFromDb(
                 "SELECT `player_id` `id`, `player_score` `score` FROM `player`"
             );
-
+            
             $this->blue_planet_count->fillResult($result);
             $this->green_planet_count->fillResult($result);
             $this->red_planet_count->fillResult($result);

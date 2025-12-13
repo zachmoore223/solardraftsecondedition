@@ -246,10 +246,6 @@
     outline-offset: -4px;
 }
 
-#discard-pile .card.clicked {
-    outline: 3px solid rgba(255, 0, 221, 1);
-    outline-offset: -4px;
-}
 
 .card {
     transition: transform 0.25s ease-in-out;
@@ -265,8 +261,7 @@
 /* CARD HOVERS */
 #player-hand .card:hover,
 #solar-row-1 .card:hover,
-#solar-row-2 .card:hover,
-#discard-pile .card:hover {
+#solar-row-2 .card:hover{
 box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
     z-index: 9999;       
 }
@@ -297,6 +292,21 @@ box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
     align-self: flex-start;
     margin-bottom: 2px;
     font-weight: bold;
+}
+
+.section-label-discard {
+    cursor: pointer;
+    user-select: none;
+}
+
+#discard-pile_wrap {
+    cursor: pointer;
+    user-select: none;
+}
+
+#discard-pile_wrap:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: background-color 0.2s ease;
 }
 /* The whole grid for all counters */
 .player-counters-grid {
