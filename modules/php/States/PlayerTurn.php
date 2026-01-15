@@ -631,6 +631,15 @@ class PlayerTurn extends GameState
         // Consume the action
         $this->consumeAction($activePlayerId, 'draw');
 
+        // Check if deck is now empty after drawing
+        $cardsRemaining = $this->game->cards->countCardsInLocation(Game::LOCATION_DECK);
+        $deckEmpty = ($cardsRemaining == 0);
+        
+        if ($deckEmpty) {
+            // Mark that the deck is empty and track who drew the last card
+            $this->game->setGameStateValue('deck_empty', 1);
+            $this->game->setGameStateValue('last_card_drawer', $activePlayerId);
+        }
 
         // Notify each player that current player drew a card
         $this->game->notify->all(
@@ -641,10 +650,11 @@ class PlayerTurn extends GameState
                 'player_name' => $this->game->getPlayerNameById($activePlayerId),
                 'deckTop' => $deckTop,
                 'newDeckTop' => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
-                'cardsRemaining' => $this->game->cards->countCardsInLocation(Game::LOCATION_DECK),
+                'cardsRemaining' => $cardsRemaining,
                 'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId),
                 'open_actions' => $this->game->open_actions->get($activePlayerId),
-                'draw_actions' => $this->game->draw_actions->get($activePlayerId)
+                'draw_actions' => $this->game->draw_actions->get($activePlayerId),
+                'deckEmpty' => $deckEmpty
             ]
         );
 
@@ -670,6 +680,17 @@ class PlayerTurn extends GameState
         }
     }
 
+
+    /*******************
+     *   DEBUG END GAME (TESTING)     *           
+     *******************/
+    #[PossibleAction]
+    public function actDebugEndGame(int $activePlayerId)
+    {
+        // Debug action to trigger end game for testing purposes
+        // This will transition directly to EndScore state
+        return EndScore::class;
+    }
 
     /*******************
      *   PASS TURN     *           

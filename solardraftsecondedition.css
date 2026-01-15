@@ -99,15 +99,33 @@
 }
 
 #player-hand {
-    position: relative !important;
+    position: relative;
     min-height: 236px;
     width: 100%;
+    overflow-x: auto; /* Allow horizontal scrolling if cards extend */
+    overflow-y: hidden; /* Prevent vertical wrapping */
 }
 
+/* Ensure cards stay in a single line */
+#player-hand > div {
+    display: flex;
+    flex-wrap: nowrap;
+}
+
+/* Cards will have dynamic margin-right applied via JavaScript */
+#player-hand .card {
+    transition: margin-right 0.2s ease; /* Smooth transition when overlap changes */
+}
+
+/* Ensure hovered cards appear on top */
+#player-hand .card:hover {
+    z-index: 10000;
+}
 
 /* Ensure the whiteblock stays in place */
 #player-hand_wrap.whiteblock {
     display: block;
+    position: relative;
 }
 
 #solar-deck{

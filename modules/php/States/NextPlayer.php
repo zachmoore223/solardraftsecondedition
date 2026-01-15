@@ -30,10 +30,50 @@ class NextPlayer extends \Bga\GameFramework\States\GameState
         // Give some extra time to the active player when he completed an action
         $this->game->giveExtraTime($activePlayerId);
         
-        $this->game->activeNextPlayer();
+        // Check if deck is empty (game ending)
+        $deckEmpty = $this->game->getGameStateValue('deck_empty') == 1;
+        $lastCardDrawer = $this->game->getGameStateValue('last_card_drawer');
+        
+        // Move to next player
+        $newActivePlayerId = $this->game->activeNextPlayer();
+        
+        // Determine if game should end
+        $gameEnd = false;
+        
+        if ($deckEmpty) {
+            // If deck is empty, we need to complete the current round
+            // Only players who come AFTER the drawer in turn order get one more turn
+            // Once we cycle back to or before the drawer, the game ends
+            
+            // Get all player IDs in turn order
+            $players = $this->game->getCollectionFromDb(
+                "SELECT player_id FROM player ORDER BY player_no"
+            );
+            $playerIds = array_values(array_map(function($p) { 
+                return (int)$p['player_id']; 
+            }, $players));
+            
+            // Find the position of the last card drawer in the turn order
+            $drawerIndex = array_search((int)$lastCardDrawer, $playerIds);
+            
+            // Find the position of the new active player
+            $newActiveIndex = array_search((int)$newActivePlayerId, $playerIds);
+            
+            if ($drawerIndex !== false && $newActiveIndex !== false) {
+                // If the new active player is the drawer, we've completed the round - game ends
+                if ($newActivePlayerId == $lastCardDrawer) {
+                    $gameEnd = true;
+                }
+                // If the new active player comes before the drawer in turn order, we've wrapped around
+                // This means all players after the drawer have had their turn - game ends
+                elseif ($newActiveIndex < $drawerIndex) {
+                    $gameEnd = true;
+                }
+                // Otherwise, the new active player comes after the drawer - they get one more turn
+            }
+        }
 
         // Go to another gamestate
-        $gameEnd = false; // Here, we would detect if the game is over to make the appropriate transition
         if ($gameEnd) {
             return EndScore::class;
         } else {

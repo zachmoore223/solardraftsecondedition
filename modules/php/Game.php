@@ -190,6 +190,8 @@ class Game extends \Bga\GameFramework\Table
             'pending_moon_card_id' => 10,
             'shell_star_active' => 11, // Player ID for Shell Star ability (only moons can be played)
             'last_turn_player' => 12, // Track the last player who received starting action
+            'deck_empty' => 13, // Flag: 1 if deck is empty (game ending), 0 otherwise
+            'last_card_drawer' => 14, // Player ID who drew the last card
         ]); // mandatory, even if the array is empty
 
         $this->blue_planet_count = $this->counterFactory->createPlayerCounter('blue_planet_count');
@@ -772,6 +774,64 @@ class Game extends \Bga\GameFramework\Table
             $card = $this->enrichCard($card);
         }
         return $cards;
+    }
+
+    /*************************************************
+     * SCORING HELPERS
+     *************************************************/
+
+    /**
+     * Calculate basic score for a player (just points values of cards)
+     * This is the first step - later we'll add ability-based scoring
+     */
+    public function calculateBasicScore(int $playerId): int
+    {
+        $score = 0;
+        
+        // Get all cards in the player's tableau
+        $cards = $this->cards->getCardsInLocation('tableau', $playerId);
+        
+        // Sum up points from planets, moons, and comets
+        foreach ($cards as $card) {
+            // Get card info to access points value
+            $cardInfo = $this->getCardInfo($card);
+            if ($cardInfo && isset($cardInfo['points']) && is_numeric($cardInfo['points'])) {
+                $score += (int)$cardInfo['points'];
+            }
+        }
+        
+        return $score;
+    }
+
+    /**
+     * Calculate full score for a player (basic points + ability-based scoring)
+     * For now, this just calls calculateBasicScore, but later we'll expand it
+     */
+    public function calculatePlayerScore(int $playerId): int
+    {
+        // Start with basic points
+        $score = $this->calculateBasicScore($playerId);
+        
+        // TODO: Add ability-based scoring here
+        
+        return $score;
+    }
+
+    /**
+     * Update scores for all players
+     */
+    public function updateAllScores(): void
+    {
+        $players = $this->getCollectionFromDb(
+            "SELECT player_id FROM player"
+        );
+        
+        foreach ($players as $playerId => $player) {
+            $score = $this->calculatePlayerScore((int)$playerId);
+            $this->DbQuery(
+                "UPDATE player SET player_score = $score WHERE player_id = $playerId"
+            );
+        }
     }
 
     /*************************************************

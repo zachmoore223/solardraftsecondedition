@@ -151,47 +151,89 @@ define([
       /*******************************
        *          PLAYER HAND         *
        *******************************/
-      //TO DO - clikcing on card in hand will prompt PLAY action
-      this.handStock = new BgaCards.HandStock(
+      const handElement = document.getElementById("player-hand");
+      
+      this.handStock = new BgaCards.LineStock(
         this.cardsManager,
-        document.getElementById("player-hand"),
+        handElement,
         {
-          selectedCardStyle: {
-            outlineColor: "rgba(255, 0, 221, 12)",
+            gap: "0px", // Set to 0, we'll handle spacing with margin
+            selectableCardStyle: {
+            outlineSize: 0,
           },
-          fanShaped: false, // <-- turn off fanning
-          cardOverlap: 2, // <-- keep cards flat
-          center: false, // <-- optional: left-align
-          direction: "row", // <-- optional: horizontal
+          autowidth: true,
+          wrap: "nowrap",
+          selectedCardStyle: {
+            outlineColor: "rgba(255, 0, 221, 0.6)",
+          },
         }
       );
+
+      // Function to dynamically update card overlap based on hand size
+      const updateHandOverlap = () => {
+        const cards = handElement.querySelectorAll('.card');
+        const cardCount = cards.length;
+        const multiplier = (cardCount * cardCount);
+        if (cardCount === 0) return;
+        
+        // Calculate overlap amount based on number of cards
+        // More cards = more overlap needed
+        // Start with no overlap for few cards, increase as hand grows
+        let overlapAmount = 0;
+        
+        if (cardCount <= 5) {
+          overlapAmount = 0;
+        } else {  
+          overlapAmount = 10 + multiplier;
+        } 
+
+        // Apply margin-right to all cards except the last one
+        cards.forEach((card, index) => {
+          if (index === cards.length - 1) {
+            // Last card has no margin
+            card.style.marginRight = '0';
+          } else {
+            // Other cards have negative margin for overlap
+            card.style.marginRight = `-${overlapAmount}px`;
+          }
+        });
+      };
       
-      // Disable floating behavior - override watchFloatingState to prevent cards from floating to bottom
-      // HandStock automatically floats to bottom when not visible - we want to disable this
-      const originalWatchFloating = this.handStock.watchFloatingState;
-      if (originalWatchFloating) {
-        this.handStock.watchFloatingState = function() {
-          // Override to do nothing - prevents floating to bottom of viewport
-          // Cards will stay in their original position in the hand container
-        };
-      }
+      // Override addCard to update overlap after adding
+      const originalAddCard = this.handStock.addCard.bind(this.handStock);
+      this.handStock.addCard = async function(card, settings) {
+        const result = await originalAddCard(card, settings);
+        setTimeout(updateHandOverlap, 50);
+        return result;
+      };
       
-      // Also prevent floating by setting the threshold to an impossible value
-      if (this.handStock.floatingThreshold !== undefined) {
-        this.handStock.floatingThreshold = 9999; // Set threshold so high it never triggers
-      }
+      // Override addCards to update overlap after adding
+      const originalAddCards = this.handStock.addCards.bind(this.handStock);
+      this.handStock.addCards = async function(cards, settings, shift) {
+        const result = await originalAddCards(cards, settings, shift);
+        setTimeout(updateHandOverlap, 50);
+        return result;
+      };
       
-      //can only play one card from hand - might change this select to only matter for moons since that's the only time you have a choice where a card goes
-      this.handStock.setSelectionMode("single", {
-        unselectOnClick: true,
-        selectableCardClass: "card-selectable",
-      });
+      // Override removeCard to update overlap after removing
+      const originalRemoveCard = this.handStock.removeCard.bind(this.handStock);
+      this.handStock.removeCard = async function(card, settings) {
+        const result = await originalRemoveCard(card, settings);
+        setTimeout(updateHandOverlap, 50);
+        return result;
+      };
+
+      // Enable selection mode - can only play one card from hand
+      this.handStock.setSelectionMode("single");
 
       this.handStock.onCardClick = (card) => {
         this.playCard(this.player_id, card);
       };
 
       this.handStock.addCards(Array.from(Object.values(this.gamedatas.hand)));
+      
+      // Initial overlap calculation after cards are added
+      setTimeout(updateHandOverlap, 100);
 
       /*******************************
        *         SOLAR DECK           *
@@ -660,11 +702,12 @@ define([
               playerCounter: entry.name,
               playerId: playerId
             });
+            this.counters[playerId][entry.name] = counter;
           } else {
             counter.create(entry.id);
             counter.setValue(entry.default);
+            this.counters[playerId][entry.name] = counter;
           }
-          this.counters[playerId][entry.name] = counter;
         }
       }
 
@@ -950,6 +993,30 @@ define([
           const btn = document.getElementById("pass_btn");
           if (btn && btn.style.display !== 'none') {
             btn.remove();
+          }
+        }
+
+        // Add Debug End Game button (for testing)
+        if (stateName === "PlayerTurn" && this.isCurrentPlayerActive() && !inSolarFlareSelection) {
+          const existingDebugBtn = document.getElementById("debug_end_game_btn");
+          if (!existingDebugBtn) {
+            this.addActionButton(
+              "debug_end_game_btn",
+              _("DEBUG: End Game"),
+              () => {
+                this.bgaPerformAction("actDebugEndGame");
+              },
+              null,
+              false,
+              "red"
+            );
+          } else if (existingDebugBtn.style.display === 'none') {
+            existingDebugBtn.style.display = '';
+          }
+        } else if (!inSolarFlareSelection) {
+          const debugBtn = document.getElementById("debug_end_game_btn");
+          if (debugBtn && debugBtn.style.display !== 'none') {
+            debugBtn.remove();
           }
         }
       }
@@ -1897,6 +1964,25 @@ define([
         } else {
           console.warn("Action counter not found:", counterName, "for player", playerId);
         }
+      }
+    },
+
+    /*******************************
+    *        SCORE UPDATED         *
+    *******************************/
+    notif_scoreUpdated: function (notif) {
+      console.log("notif_scoreUpdated", notif);
+      const playerId = notif.player_id;
+      const score = notif.score;
+
+      // Update the built-in BGA scoreCtrl (displays with star icon in player panel)
+      if (this.scoreCtrl && this.scoreCtrl[playerId]) {
+        this.scoreCtrl[playerId].toValue(score);
+      }
+      
+      // Also update gamedatas for refresh safety
+      if (this.gamedatas && this.gamedatas.players && this.gamedatas.players[playerId]) {
+        this.gamedatas.players[playerId].score = score.toString();
       }
     },
 
