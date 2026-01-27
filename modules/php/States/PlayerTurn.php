@@ -375,9 +375,7 @@ class PlayerTurn extends GameState
             }
         }
 
-        //Add any actions granted from card to current player's action count
-        // This happens AFTER consuming the action, so the granted actions are available for future use
-        $this->game->getCardActions($card, $activePlayerId);
+        // Note: getCardActions() is called AFTER parent_id is determined for comets (see below)
 
         // Get all planets currently in tableau (before adding this card)
         $planet_order = array_values(
@@ -469,6 +467,10 @@ class PlayerTurn extends GameState
         // Add them to the card being sent to UI
         $card['parent_id'] = $parent_id;
         $card['parent_slot'] = $parent_slot;
+
+        // Grant any actions from the card to the current player
+        // For comets, pass the adjacent planet ID so moon/ring counting works
+        $this->game->getCardActions($card, $activePlayerId, $parent_id);
 
         $cardColor = $card['color'];
         $cardRings = $card['rings'];
@@ -997,7 +999,9 @@ class PlayerTurn extends GameState
         
         // Re-execute the comet's ability
         $cometCard = $this->game->enrichCard($cometCard);
-        $this->game->getCardActions($cometCard, $playerId);
+        // Pass the comet's parent_id (adjacent planet) for moon/ring counting
+        $adjacentPlanetId = $cometCard['parent_id'] ? (int)$cometCard['parent_id'] : null;
+        $this->game->getCardActions($cometCard, $playerId, $adjacentPlanetId);
         
         $this->game->sun_ability_used->set($playerId, 1);
         
