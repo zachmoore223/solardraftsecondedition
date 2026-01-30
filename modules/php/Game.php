@@ -129,7 +129,7 @@ class Game extends \Bga\GameFramework\Table
             70 => [ 'name'=>'Comet10', 'points'=>2, 'ability'=>'DRAW A CARD and then PLAY A CARD.' ],
             71 => [ 'name'=>'Comet11', 'points'=>1, 'ability'=>'DRAW A CARD for EACH MOON orbiting adjacent planet.' ],
             72 => [ 'name'=>'Comet12', 'points'=>1, 'ability'=>'DRAW A CARD for each RING adjacent planet has.' ],
-            73 => [ 'name'=>'Comet13', 'points'=>2, 'ability'=>'Place a COMET card from the Solar Row into your Solar System.' ],
+            73 => [ 'name'=>'Comet13', 'points'=>2, 'ability'=>'Discard a COMET card from the Solar Row and gain its EFFECT.' ],
             74 => [ 'name'=>'Comet14', 'points'=>3, 'ability'=>'DRAW the top card of the discard pile.' ],
             75 => [ 'name'=>'Comet15', 'points'=>1, 'ability'=>'DRAW the top three cards of the discard pile.' ],
             76 => [ 'name'=>'Comet16', 'points'=>2, 'ability'=>'DRAW the top two cards of the discard pile.' ],
@@ -192,6 +192,7 @@ class Game extends \Bga\GameFramework\Table
             'last_turn_player' => 12, // Track the last player who received starting action
             'deck_empty' => 13, // Flag: 1 if deck is empty (game ending), 0 otherwise
             'last_card_drawer' => 14, // Player ID who drew the last card
+            'draw_from_discard_only' => 15, // Player ID who must draw from discard pile (0 = none)
         ]); // mandatory, even if the array is empty
 
         $this->blue_planet_count = $this->counterFactory->createPlayerCounter('blue_planet_count');
@@ -1287,13 +1288,13 @@ class Game extends \Bga\GameFramework\Table
             }
         } elseif (strpos($ability, 'every 2 PLANETS') !== false) {
             $planetCount = count($tableau['planets']);
-            $count = floor($planetCount / 2);
+            $count = (int)floor($planetCount / 2);
             if (preg_match('/(\d+) point/', $ability, $matches)) {
                 $score += (int)$matches[1] * $count;
             }
         } elseif (strpos($ability, 'every 3 COMETS') !== false) {
             $cometCount = count($tableau['comets']);
-            $count = floor($cometCount / 3);
+            $count = (int)floor($cometCount / 3);
             if (preg_match('/(\d+) points?/', $ability, $matches)) {
                 $score += (int)$matches[1] * $count;
             }
@@ -1305,7 +1306,7 @@ class Game extends \Bga\GameFramework\Table
                     $count++;
                 }
             }
-            $count = floor($count / 2); // Every other
+            $count = (int)floor($count / 2); // Every other
             if (preg_match('/(\d+) points?/', $ability, $matches)) {
                 $score += (int)$matches[1] * $count;
             }
@@ -1868,19 +1869,21 @@ class Game extends \Bga\GameFramework\Table
                 break;
             
             case 74: // Comet14: DRAW the top card of the discard pile
-                // TODO: Implement drawing from discard pile specifically
-                // For now, this needs special handling - not a regular draw
-                $this->grantDrawAction($playerId, 1); // Placeholder - should draw from discard
+                // Set flag to restrict draws to discard pile only
+                $this->setGameStateValue('draw_from_discard_only', $playerId);
+                $this->grantDrawAction($playerId, 1);
                 break;
             
             case 75: // Comet15: DRAW the top three cards of the discard pile
-                // TODO: Implement drawing from discard pile specifically
-                $this->grantDrawAction($playerId, 3); // Placeholder - should draw from discard
+                // Set flag to restrict draws to discard pile only
+                $this->setGameStateValue('draw_from_discard_only', $playerId);
+                $this->grantDrawAction($playerId, 3);
                 break;
             
             case 76: // Comet16: DRAW the top two cards of the discard pile
-                // TODO: Implement drawing from discard pile specifically
-                $this->grantDrawAction($playerId, 2); // Placeholder - should draw from discard
+                // Set flag to restrict draws to discard pile only
+                $this->setGameStateValue('draw_from_discard_only', $playerId);
+                $this->grantDrawAction($playerId, 2);
                 break;
             
             case 77: // Comet17: Place a PLANET card from the Solar Row into your Solar System

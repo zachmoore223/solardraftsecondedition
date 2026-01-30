@@ -121,6 +121,10 @@ class PlayerTurn extends GameState
         $solarFlareAvailable = $this->game->solar_flare_used->get($activePlayerId) == 0;
         $sunAbilityAvailable = $this->game->sun_ability_used->get($activePlayerId) == 0 && $abilityId > 0;
         
+        // Check if player must draw from discard pile (for action descriptions)
+        $drawFromDiscardOnly = $this->game->getGameStateValue('draw_from_discard_only');
+        $mustDrawFromDiscardDesc = ($drawFromDiscardOnly == $activePlayerId);
+        
         // Build list of available actions with natural language
         // Priority: specific actions first, then open action, then sun abilities, then pass
         $availableActions = [];
@@ -130,7 +134,8 @@ class PlayerTurn extends GameState
             $availableActions[] = 'draft';
         }
         if ($drawActions > 0) {
-            $availableActions[] = 'draw';
+            // Show "draw from discard pile" if restricted
+            $availableActions[] = $mustDrawFromDiscardDesc ? 'draw from discard pile' : 'draw';
         }
         if ($playActions > 0) {
             $availableActions[] = 'play';
@@ -161,6 +166,10 @@ class PlayerTurn extends GameState
             $descriptionMyTurn = '${you} must ${actionList}';
         }
         
+        // Check if player must draw from discard pile
+        $drawFromDiscardOnly = $this->game->getGameStateValue('draw_from_discard_only');
+        $mustDrawFromDiscard = ($drawFromDiscardOnly == $activePlayerId);
+        
         return [
             "mustPlayPlanet" => !$hasPlanets,
             'open_actions' => $openActions,
@@ -174,6 +183,7 @@ class PlayerTurn extends GameState
             'description' => $description,
             'descriptionMyTurn' => $descriptionMyTurn,
             'available_actions' => $availableActions,
+            'draw_from_discard_only' => $mustDrawFromDiscard,
         ];
     }
 
@@ -622,12 +632,20 @@ class PlayerTurn extends GameState
             throw new UserException("You don't have any DRAW actions available.");
         }
 
-        // Double-check we still have actions before consuming (race condition protection)
-        if (!$this->canDraw($activePlayerId)) {
-            throw new UserException("You don't have any DRAW actions available.");
+        // Check if player must draw from discard pile (comet ability)
+        $drawFromDiscardOnly = $this->game->getGameStateValue('draw_from_discard_only');
+        $mustDrawFromDiscard = ($drawFromDiscardOnly == $activePlayerId);
+        
+        if ($mustDrawFromDiscard) {
+            return $this->drawFromDiscard($activePlayerId);
         }
-
+        
+        // Normal draw from deck
         $deckTop = $this->game->cards->getCardOnTop(Game::LOCATION_DECK);
+        if (!$deckTop) {
+            throw new UserException("The deck is empty.");
+        }
+        
         $this->game->cards->moveCard($deckTop['id'], 'hand', $activePlayerId);
 
         // Consume the action
@@ -643,6 +661,9 @@ class PlayerTurn extends GameState
             $this->game->setGameStateValue('last_card_drawer', $activePlayerId);
         }
 
+        // Enrich the drawn card with name/ability info
+        $enrichedDeckTop = $this->game->enrichCard($deckTop);
+        
         // Notify each player that current player drew a card
         $this->game->notify->all(
             'deckDraw',
@@ -650,7 +671,7 @@ class PlayerTurn extends GameState
             [
                 'player_id' => $activePlayerId,
                 'player_name' => $this->game->getPlayerNameById($activePlayerId),
-                'deckTop' => $deckTop,
+                'deckTop' => $enrichedDeckTop,
                 'newDeckTop' => $this->game->cards->getCardOnTop(Game::LOCATION_DECK),
                 'cardsRemaining' => $cardsRemaining,
                 'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId),
@@ -666,15 +687,82 @@ class PlayerTurn extends GameState
             "dealCardPrivate",
             clienttranslate('You drew ${cardName}'),
             [
-                "card" => $deckTop,
-                "type" => $deckTop["type"],
-                "cardName" => $this->game->getCardName($deckTop)
+                "card" => $enrichedDeckTop,
+                "type" => $enrichedDeckTop["type"],
+                "cardName" => $this->game->getCardName($enrichedDeckTop)
             ]
         );
 
 
         // After action, check if turn should auto-end
         // Only auto-end if no actions left AND solar flare already used
+        if ($this->shouldAutoEndTurn($activePlayerId)) {
+            return NextPlayer::class;
+        } else {
+            return PlayerTurn::class;
+        }
+    }
+    
+    /*******************
+     *   DRAW FROM DISCARD PILE   *           
+     *******************/
+    private function drawFromDiscard(int $activePlayerId): string
+    {
+        // Get top card of discard pile
+        $discardTop = $this->game->cards->getCardOnTop(Game::LOCATION_DISCARD);
+        
+        if (!$discardTop) {
+            // Discard pile is empty - clear the restriction and notify player
+            $this->game->setGameStateValue('draw_from_discard_only', 0);
+            throw new UserException("The discard pile is empty. Draw action cancelled.");
+        }
+        
+        // Move card from discard to hand
+        $this->game->cards->moveCard($discardTop['id'], 'hand', $activePlayerId);
+        
+        // Consume the action
+        $this->consumeAction($activePlayerId, 'draw');
+        
+        // Check if draw actions are now 0 - if so, clear the discard restriction
+        $remainingDrawActions = $this->game->draw_actions->get($activePlayerId);
+        if ($remainingDrawActions == 0) {
+            $this->game->setGameStateValue('draw_from_discard_only', 0);
+        }
+        
+        // Enrich the drawn card
+        $enrichedCard = $this->game->enrichCard($discardTop);
+        
+        // Get updated discard pile count
+        $cardsInDiscard = $this->game->cards->countCardsInLocation(Game::LOCATION_DISCARD);
+        
+        // Notify all players
+        $this->game->notify->all(
+            'discardDraw',
+            clienttranslate('${player_name} drew a card from the discard pile'),
+            [
+                'player_id' => $activePlayerId,
+                'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                'card' => $enrichedCard,
+                'cardsInDiscard' => $cardsInDiscard,
+                'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId),
+                'open_actions' => $this->game->open_actions->get($activePlayerId),
+                'draw_actions' => $this->game->draw_actions->get($activePlayerId),
+            ]
+        );
+        
+        // Notify current player which card they drew
+        $this->notify->player(
+            $activePlayerId,
+            "dealCardPrivate",
+            clienttranslate('You drew ${cardName} from the discard pile'),
+            [
+                "card" => $enrichedCard,
+                "type" => $enrichedCard["type"],
+                "cardName" => $this->game->getCardName($enrichedCard)
+            ]
+        );
+        
+        // After action, check if turn should auto-end
         if ($this->shouldAutoEndTurn($activePlayerId)) {
             return NextPlayer::class;
         } else {

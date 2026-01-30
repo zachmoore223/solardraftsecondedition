@@ -86,6 +86,11 @@ define([
 
           div.style.width = cardWidth + "px";
           div.style.height = cardHeight + "px";
+
+          // Add tooltip with card name for debugging
+          if (card.name) {
+            div.title = `${card.name} (${card.type} #${card.type_arg})`;
+          }
         },
       });
 
@@ -280,7 +285,15 @@ define([
         
         // Single click handler for the entire area
         discardPileWrap.addEventListener("click", (e) => {
-          // Toggle the discard pile view
+          // If player must draw from discard pile, trigger draw action
+          if (this.mustDrawFromDiscard && this.isCurrentPlayerActive()) {
+            this.bgaPerformAction("actDrawCard").catch((error) => {
+              console.log("Draw from discard action failed:", error);
+            });
+            return;
+          }
+          
+          // Otherwise, toggle the discard pile view
           if (this.discardPileViewVisible) {
             this.hideDiscardPileView();
           } else {
@@ -292,6 +305,7 @@ define([
       // Initialize discard pile view state
       this.discardPileViewVisible = false;
       this.discardPileViewStock = null;
+      this.mustDrawFromDiscard = false;
 
       /*******************************
        *          SOLAR ROWS          *
@@ -747,6 +761,12 @@ define([
                 this.counters[activePlayerId].play_actions.toValue(stateArgs.play_actions);
               }
             }
+            
+            // Track if current player must draw from discard pile
+            this.mustDrawFromDiscard = stateArgs.draw_from_discard_only && this.isCurrentPlayerActive();
+            
+            // Update discard pile visual indicator
+            this.updateDiscardPileDrawIndicator();
             
             // Update status bar description based on available actions
             // Add safety checks to prevent errors during initialization
@@ -1630,6 +1650,31 @@ define([
       }
     },
 
+    updateDiscardPileDrawIndicator: function () {
+      const discardPileWrap = document.getElementById("discard-pile_wrap");
+      if (!discardPileWrap) return;
+      
+      // Add or remove visual indicator class based on mustDrawFromDiscard
+      if (this.mustDrawFromDiscard) {
+        discardPileWrap.classList.add("draw-from-discard-active");
+        // Update the label to indicate clicking will draw
+        const label = discardPileWrap.querySelector(".section-label-discard");
+        if (label && !label.dataset.originalText) {
+          label.dataset.originalText = label.textContent;
+          label.innerHTML = `<span style="color: #ff0; font-weight: bold;">Click to Draw from Discard!</span>`;
+        }
+      } else {
+        discardPileWrap.classList.remove("draw-from-discard-active");
+        // Restore original label
+        const label = discardPileWrap.querySelector(".section-label-discard");
+        if (label && label.dataset.originalText) {
+          const discardCount = this.gamedatas.discardPile ? Object.keys(this.gamedatas.discardPile).length : 0;
+          label.innerHTML = `Discard Pile (<span id="discard-count">${discardCount}</span>)`;
+          delete label.dataset.originalText;
+        }
+      }
+    },
+
   /*------------------------------------------------------------------------------------/
                                     NOTIFICATIONS
   /*------------------------------------------------------------------------------------/
@@ -1769,8 +1814,69 @@ define([
         }
       }
 
-      // Add drawn card to hand
-      await this.handStock.addCard(notif.deckTop);
+      // Add drawn card to hand ONLY if it's the current player who drew
+      if (playerId == this.player_id) {
+        await this.handStock.addCard(notif.deckTop);
+      }
+    },
+
+    /*******************************
+    *       DRAW FROM DISCARD      *
+    *******************************/
+    notif_discardDraw: async function (notif) {
+      console.log("notif_discardDraw", notif);
+      const card = notif.card;
+      const playerId = notif.player_id;
+      const open_actions = notif.open_actions;
+      const draw_actions = notif.draw_actions;
+
+      // Update discard pile count
+      if (notif.cardsInDiscard !== undefined) {
+        const discardCountEl = document.getElementById("discard-count");
+        if (discardCountEl) {
+          discardCountEl.innerText = notif.cardsInDiscard;
+        }
+      }
+
+      // Remove card from discard pile visual
+      if (this.discardDeck && card) {
+        try {
+          await this.discardDeck.removeCard(card);
+        } catch (e) {
+          console.warn("Error removing card from discard pile:", e);
+        }
+      }
+
+      // Update gamedatas discard pile
+      if (this.gamedatas.discardPile && card.id) {
+        delete this.gamedatas.discardPile[card.id];
+      }
+
+      // Update draw/open action counters
+      if (this.counters && this.counters[playerId]) {
+        if (open_actions !== undefined) {
+          this.counters[playerId].open_actions.setValue(open_actions);
+        }
+        if (draw_actions !== undefined) {
+          this.counters[playerId].draw_actions.setValue(draw_actions);
+        }
+      }
+
+      // Add drawn card to hand ONLY if it's the current player who drew
+      if (playerId == this.player_id) {
+        await this.handStock.addCard(card);
+        
+        // Check if draw actions are now 0 - clear the discard draw indicator
+        if (draw_actions === 0) {
+          this.mustDrawFromDiscard = false;
+          this.updateDiscardPileDrawIndicator();
+        }
+      }
+
+      // Refresh discard pile view if it's visible
+      if (this.discardPileViewVisible) {
+        this.refreshDiscardPileView();
+      }
     },
 
     /*******************************
