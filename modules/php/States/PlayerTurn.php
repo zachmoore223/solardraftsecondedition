@@ -223,8 +223,10 @@ class PlayerTurn extends GameState
 
     private function canDraw(int $playerId): bool
     {
+        // Draft actions can also be used to draw (draft = draw from deck OR draft from row)
         return $this->game->open_actions->get($playerId) > 0
-            || $this->game->draw_actions->get($playerId) > 0;
+            || $this->game->draw_actions->get($playerId) > 0
+            || $this->game->draft_actions->get($playerId) > 0;
     }
 
     private function canPlay(int $playerId, ?string $cardType = null): bool
@@ -275,9 +277,13 @@ class PlayerTurn extends GameState
                 break;
             case 'draw':
                 $drawActions = $this->game->draw_actions->get($playerId);
+                $draftActions = $this->game->draft_actions->get($playerId);
                 $openActions = $this->game->open_actions->get($playerId);
                 if ($drawActions > 0 && $drawActions <= 100) { // Ignore Shell Star's 999
                     $this->game->draw_actions->inc($playerId, -1);
+                } elseif ($draftActions > 0 && $draftActions <= 100) {
+                    // Draft actions can be used to draw (draft = draw from deck OR draft from row)
+                    $this->game->draft_actions->inc($playerId, -1);
                 } elseif ($openActions > 0) {
                     $this->game->open_actions->inc($playerId, -1);
                 } else {
@@ -315,6 +321,14 @@ class PlayerTurn extends GameState
     {   
         // Get card first to check type
         $card = $this->game->cards->getCard($card_id);
+        
+        // Check if Diluna is active - if so, only moons can be played (onto Diluna)
+        $dilunaActive = $this->game->getGameStateValue('diluna_active');
+        if ($dilunaActive > 0) {
+            if ($card['type'] !== 'moon') {
+                throw new UserException("Diluna ability is active - you can only play MOONS onto Diluna.");
+            }
+        }
         
         // Check if Shell Star is active - if so, only moons can be played
         $shellStarActive = $this->game->getGameStateValue('shell_star_active');
@@ -425,8 +439,102 @@ class PlayerTurn extends GameState
             $parent_slot = null;
         }
 
-        // If it's a moon, transition to moon placement state instead
+        // If it's a moon, handle placement
         if ($card['type'] === 'moon') {
+            // Check if Diluna is active - if so, auto-place on Diluna
+            $dilunaActive = $this->game->getGameStateValue('diluna_active');
+            if ($dilunaActive > 0) {
+                // Auto-place moon on Diluna planet
+                $dilunaPlanetId = $dilunaActive;
+                
+                // Verify Diluna planet exists and can accept moons
+                $dilunaPlanet = $this->game->cards->getCard($dilunaPlanetId);
+                if (!$dilunaPlanet) {
+                    throw new UserException("Diluna planet not found.");
+                }
+                
+                // Get planet info to check moon limit
+                $planetInfo = $this->game->getCardInfo($dilunaPlanet);
+                $moonLimit = $planetInfo['moonLimit'] ?? 3;
+                
+                // Count current moons on Diluna
+                $currentMoonCount = (int) $this->game->getUniqueValueFromDB("
+                    SELECT COUNT(*)
+                    FROM `card`
+                    WHERE parent_id = $dilunaPlanetId
+                    AND card_type = 'moon'
+                ");
+                
+                if ($currentMoonCount >= $moonLimit) {
+                    // Clear Diluna restriction since planet is full
+                    $this->game->setGameStateValue('diluna_active', 0);
+                    throw new UserException("Diluna already has the maximum number of moons.");
+                }
+                
+                // Set parent info for this moon
+                $parent_id = $dilunaPlanetId;
+                $parent_slot = $currentMoonCount;
+                
+                $this->game->DbQuery(
+                    "
+                    UPDATE `card`
+                    SET parent_id = $parent_id,
+                        parent_slot = $parent_slot
+                    WHERE card_id = " . (int)$card['id']
+                );
+                
+                $card['parent_id'] = $parent_id;
+                $card['parent_slot'] = $parent_slot;
+                
+                // Grant any actions from the moon (and check parent planet triggered abilities)
+                $this->game->getCardActions($card, $activePlayerId, $parent_id);
+                
+                // Update moon counter
+                $this->game->moon_count->inc($activePlayerId, 1);
+                $newValue = $this->game->moon_count->get($activePlayerId);
+                
+                // Update ring counter if applicable
+                if (isset($card['rings']) && $card['rings'] > 0) {
+                    $this->game->ring_count->inc($activePlayerId, $card['rings']);
+                    $newRingCount = $this->game->ring_count->get($activePlayerId);
+                }
+                
+                // Check if play_actions is now 0 - clear Diluna restriction
+                $remainingPlayActions = $this->game->play_actions->get($activePlayerId);
+                if ($remainingPlayActions == 0) {
+                    $this->game->setGameStateValue('diluna_active', 0);
+                }
+                
+                // Notify all players
+                $this->notify->all(
+                    'cardPlayed',
+                    '${player_name} plays ${cardName} on Diluna.',
+                    [
+                        'player_id' => $activePlayerId,
+                        'player_name' => $this->game->getPlayerNameById($activePlayerId),
+                        'cardName' => $this->game->getCardName($card),
+                        'card' => $card,
+                        'newValue' => $newValue,
+                        'counter' => 'moon',
+                        'newRingCount' => $newRingCount,
+                        'target_planet_id' => $dilunaPlanetId,
+                        'open_actions' => $this->game->open_actions->get($activePlayerId),
+                        'draft_actions' => $this->game->draft_actions->get($activePlayerId),
+                        'draw_actions' => $this->game->draw_actions->get($activePlayerId),
+                        'play_actions' => $this->game->play_actions->get($activePlayerId),
+                        'diluna_active' => $this->game->getGameStateValue('diluna_active'),
+                    ]
+                );
+                
+                // After action, check if turn should auto-end
+                if ($this->shouldAutoEndTurn($activePlayerId)) {
+                    return NextPlayer::class;
+                } else {
+                    return PlayerTurn::class;
+                }
+            }
+            
+            // Normal moon placement - transition to moon placement state
             // Store the moon card ID in a global variable so the next state knows which card
             $this->game->setGameStateValue('pending_moon_card_id', $card_id);
             return MoonPlacement::class;
@@ -677,6 +785,7 @@ class PlayerTurn extends GameState
                 'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId),
                 'open_actions' => $this->game->open_actions->get($activePlayerId),
                 'draw_actions' => $this->game->draw_actions->get($activePlayerId),
+                'draft_actions' => $this->game->draft_actions->get($activePlayerId),
                 'deckEmpty' => $deckEmpty
             ]
         );
@@ -747,6 +856,7 @@ class PlayerTurn extends GameState
                 'cardsInHand' => $this->game->cards->countCardsInLocation('hand', $activePlayerId),
                 'open_actions' => $this->game->open_actions->get($activePlayerId),
                 'draw_actions' => $this->game->draw_actions->get($activePlayerId),
+                'draft_actions' => $this->game->draft_actions->get($activePlayerId),
             ]
         );
         
@@ -875,8 +985,17 @@ class PlayerTurn extends GameState
      *   SUN ABILITY   *           
      *******************/
     #[PossibleAction]
-    public function actSunAbility(int $activePlayerId, ?array $args = null)
+    public function actSunAbility(int $activePlayerId, ?string $args = null)
     {
+        // Parse args from JSON string if provided
+        $parsedArgs = null;
+        if ($args !== null && $args !== '') {
+            $parsedArgs = json_decode($args, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new UserException("Invalid arguments format.");
+            }
+        }
+        
         // Check if player has already used their Sun Ability
         if ($this->game->sun_ability_used->get($activePlayerId) == 1) {
             throw new UserException("You have already used your Sun Ability this game.");
@@ -893,25 +1012,25 @@ class PlayerTurn extends GameState
         // Route to the specific ability implementation
         switch ($sunAbility) {
             case 'Shell Star':
-                return $this->actShellStar($activePlayerId, $args);
+                return $this->actShellStar($activePlayerId, $parsedArgs);
             case 'Binary Star':
-                return $this->actBinaryStar($activePlayerId, $args);
+                return $this->actBinaryStar($activePlayerId, $parsedArgs);
             case 'Quasar':
-                return $this->actQuasar($activePlayerId, $args);
+                return $this->actQuasar($activePlayerId, $parsedArgs);
             case 'Supernova':
-                return $this->actSupernova($activePlayerId, $args);
+                return $this->actSupernova($activePlayerId, $parsedArgs);
             case 'Neutron Star':
-                return $this->actNeutronStar($activePlayerId, $args);
+                return $this->actNeutronStar($activePlayerId, $parsedArgs);
             case 'Ternary Star':
-                return $this->actTernaryStar($activePlayerId, $args);
+                return $this->actTernaryStar($activePlayerId, $parsedArgs);
             case 'Pulsar':
-                return $this->actPulsar($activePlayerId, $args);
+                return $this->actPulsar($activePlayerId, $parsedArgs);
             case 'Super Star':
-                return $this->actSuperStar($activePlayerId, $args);
+                return $this->actSuperStar($activePlayerId, $parsedArgs);
             case 'Protostar':
-                return $this->actProtostar($activePlayerId, $args);
+                return $this->actProtostar($activePlayerId, $parsedArgs);
             case 'Red Dwarf':
-                return $this->actRedDwarf($activePlayerId, $args);
+                return $this->actRedDwarf($activePlayerId, $parsedArgs);
             default:
                 throw new UserException("Unknown Sun Ability: " . $sunAbility);
         }
@@ -1003,15 +1122,22 @@ class PlayerTurn extends GameState
             $this->game->cards->moveCard($cardId, Game::LOCATION_DISCARD, 3);
         }
         
-        // Draft the entire row
+        // Draft the entire row and refill from deck
         $solarRowLocation = ($args['row'] == 1) ? Game::LOCATION_SOLARROW1 : Game::LOCATION_SOLARROW2;
         $draftedCards = [];
+        $newRowCards = [];
         for ($slot = 0; $slot < 3; $slot++) {
             $card = $this->game->cards->getCardsInLocation($solarRowLocation, $slot);
             if (!empty($card)) {
                 $card = array_values($card)[0];
                 $this->game->cards->moveCard($card['id'], 'hand', $playerId);
                 $draftedCards[] = $this->game->enrichCard($card);
+                
+                // Refill the slot from the deck
+                $newCard = $this->game->cards->pickCardForLocation('deck', $solarRowLocation, $slot);
+                if ($newCard) {
+                    $newRowCards[] = $this->game->enrichCard($newCard);
+                }
             }
         }
         
@@ -1026,6 +1152,8 @@ class PlayerTurn extends GameState
             'ability' => 'Supernova',
             'row' => $args['row'],
             'draftedCards' => $draftedCards,
+            'newRowCards' => $newRowCards,
+            'cardsRemaining' => $this->game->cards->countCardsInLocation('deck'),
             'play_actions' => $this->game->play_actions->get($playerId),
         ]);
         
@@ -1107,6 +1235,51 @@ class PlayerTurn extends GameState
         return PlayerTurn::class;
     }
 
+    /*******************
+     *   REVEAL SUPER STAR CARDS   *           
+     *******************/
+    #[PossibleAction]
+    public function actRevealSuperStarCards(int $activePlayerId)
+    {
+        // Check if player has Super Star ability
+        $abilityId = $this->game->sun_ability_id->get($activePlayerId);
+        $sunAbility = $this->game->getSunAbilityName($abilityId);
+        
+        if ($sunAbility !== 'Super Star') {
+            throw new UserException("You don't have the Super Star ability.");
+        }
+        
+        // Check if already used
+        if ($this->game->sun_ability_used->get($activePlayerId) == 1) {
+            throw new UserException("You have already used your Sun Ability this game.");
+        }
+        
+        // Get top 4 cards from deck
+        $topCards = $this->game->cards->getCardsOnTop(4, 'deck');
+        if (count($topCards) < 4) {
+            throw new UserException("There are not enough cards in the deck to use Super Star.");
+        }
+        
+        // Enrich cards for display
+        $enrichedCards = [];
+        foreach ($topCards as $card) {
+            $enrichedCards[] = $this->game->enrichCard($card);
+        }
+        
+        // Send private notification to the player only with the revealed cards
+        $this->notify->player(
+            $activePlayerId,
+            'superStarCardsRevealed',
+            clienttranslate('You look at the top 4 cards of the Solar Deck'),
+            [
+                'cards' => $enrichedCards,
+            ]
+        );
+        
+        // Stay in PlayerTurn state - player will call actSunAbility with selected cards
+        return PlayerTurn::class;
+    }
+
     private function actSuperStar(int $playerId, ?array $args): string
     {
         // Look at the TOP 4 cards of the Solar Deck. Put 2 into your hand, place the rest on the bottom.
@@ -1129,6 +1302,14 @@ class PlayerTurn extends GameState
             }
         }
         
+        // Enrich selected cards for notification
+        $selectedCards = [];
+        foreach ($topCards as $card) {
+            if (in_array($card['id'], $args['selected_card_ids'])) {
+                $selectedCards[] = $this->game->enrichCard($card);
+            }
+        }
+        
         // Move selected cards to hand
         foreach ($args['selected_card_ids'] as $cardId) {
             $this->game->cards->moveCard($cardId, 'hand', $playerId);
@@ -1147,6 +1328,7 @@ class PlayerTurn extends GameState
             'player_id' => $playerId,
             'player_name' => $this->game->getPlayerNameById($playerId),
             'ability' => 'Super Star',
+            'selectedCards' => $selectedCards,
             'cardsInHand' => count($this->game->cards->getCardsInLocation('hand', $playerId)),
         ]);
         
@@ -1176,7 +1358,8 @@ class PlayerTurn extends GameState
         $this->game->sun_ability_id->set($playerId, $targetAbilityId);
         
         // Execute the ability (but don't mark as used for the original player, just for this player)
-        $tempArgs = $args['ability_args'] ?? null;
+        // Convert ability_args back to JSON string for the recursive call
+        $tempArgs = isset($args['ability_args']) ? json_encode($args['ability_args']) : null;
         $result = $this->actSunAbility($playerId, $tempArgs);
         
         // Restore original ability ID
@@ -1209,7 +1392,10 @@ class PlayerTurn extends GameState
         usort($discardCards, fn($a, $b) => $b['location_arg'] - $a['location_arg']);
         $top3Cards = array_slice($discardCards, 0, 3);
         
+        // Enrich cards before moving them (for client display)
+        $enrichedCards = [];
         foreach ($top3Cards as $card) {
+            $enrichedCards[] = $this->game->enrichCard($card);
             $this->game->cards->moveCard($card['id'], 'hand', $playerId);
         }
         
@@ -1219,6 +1405,7 @@ class PlayerTurn extends GameState
             'player_id' => $playerId,
             'player_name' => $this->game->getPlayerNameById($playerId),
             'ability' => 'Red Dwarf',
+            'drawnCards' => $enrichedCards,
             'cardsInHand' => count($this->game->cards->getCardsInLocation('hand', $playerId)),
             'cardsInDiscard' => count($this->game->cards->getCardsInLocation(Game::LOCATION_DISCARD)),
         ]);

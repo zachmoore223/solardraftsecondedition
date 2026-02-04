@@ -1439,11 +1439,13 @@ define([
       }
 
       // Check if player has draw actions available
+      // Draft actions can also be used to draw (draft = draw from deck OR draft from row)
       const playerId = this.player_id;
       const openActions = this.counters[playerId].open_actions.getValue();
       const drawActions = this.counters[playerId].draw_actions.getValue();
+      const draftActions = this.counters[playerId].draft_actions.getValue();
       
-      if (openActions === 0 && drawActions === 0) {
+      if (openActions === 0 && drawActions === 0 && draftActions === 0) {
         this.showMessage(_("You don't have any DRAW actions available"), "error");
         return;
       }
@@ -1650,6 +1652,377 @@ define([
       }
     },
 
+    useSunAbility: function (abilityName) {
+      console.log("=== USING SUN ABILITY ===", abilityName);
+      
+      // Simple abilities that just need to call the action without args
+      const simpleAbilities = [
+        'Shell Star',      // PLAY any number of MOONS
+        'Binary Star',     // DRAFT a card then PLAY a card
+        'Quasar',          // DRAFT 2 cards
+        'Neutron Star',    // PLAY 2 cards
+        'Ternary Star',    // Gain an ACTION and DRAW 2 cards
+        'Red Dwarf'        // Take top 3 cards from discard pile
+      ];
+      
+      if (simpleAbilities.includes(abilityName)) {
+        // Simple ability - just call the action
+        this.bgaPerformAction("actSunAbility").catch((error) => {
+          console.log("Sun ability action failed:", error);
+        });
+        return;
+      }
+      
+      // Complex abilities that need additional input
+      switch (abilityName) {
+        case 'Supernova':
+          // Needs: discard 3 cards from hand, select a row
+          this.showSupernovaDialog();
+          break;
+          
+        case 'Pulsar':
+          // Needs: select a comet from tableau
+          this.showPulsarDialog();
+          break;
+          
+        case 'Super Star':
+          // Needs: look at top 4 cards, select 2
+          // Call server to reveal the top 4 cards, then show selection UI
+          this.bgaPerformAction("actRevealSuperStarCards").catch((error) => {
+            console.log("Super Star reveal failed:", error);
+          });
+          // The selection UI will be shown when we receive the superStarCardsRevealed notification
+          break;
+          
+        case 'Protostar':
+          // Needs: select a player (left or right)
+          this.showProtostarDialog();
+          break;
+          
+        default:
+          this.showMessage(_("Unknown sun ability: ") + abilityName, "error");
+      }
+    },
+    
+    showSupernovaDialog: function () {
+      // Create a dialog to select 3 cards to discard and a row
+      const playerId = this.player_id;
+      const handCards = this.handStock.getCards();
+      
+      if (handCards.length < 3) {
+        this.showMessage(_("You need at least 3 cards in hand to use Supernova"), "error");
+        return;
+      }
+      
+      // Store selected cards for Supernova
+      this.supernovaSelectedCards = [];
+      this.supernovaRow = null;
+      
+      // Enable multi-select on hand
+      this.handStock.setSelectionMode("multiple");
+      
+      // Override click handler temporarily
+      this._originalHandClickHandler = this.handStock.onCardClick;
+      this.handStock.onCardClick = (card) => {
+        const index = this.supernovaSelectedCards.findIndex(c => c.id === card.id);
+        if (index >= 0) {
+          // Deselect
+          this.supernovaSelectedCards.splice(index, 1);
+          this.handStock.unselectCard(card);
+        } else if (this.supernovaSelectedCards.length < 3) {
+          // Select
+          this.supernovaSelectedCards.push(card);
+          this.handStock.selectCard(card);
+        } else {
+          this.showMessage(_("You can only select 3 cards to discard"), "info");
+        }
+        this.updateSupernovaButtonState();
+      };
+      
+      // Update status bar
+      if (this.statusBar && this.statusBar.setTitle) {
+        this.statusBar.setTitle(_("Select 3 cards to discard, then select a row"));
+      }
+      
+      // Add row selection and confirm buttons
+      this.addActionButton(
+        "supernova_row1_btn",
+        _("Row 1"),
+        () => {
+          this.supernovaRow = 1;
+          document.getElementById("supernova_row1_btn")?.classList.add("bgabutton_selected");
+          document.getElementById("supernova_row2_btn")?.classList.remove("bgabutton_selected");
+          this.updateSupernovaButtonState();
+        },
+        null,
+        false,
+        "blue"
+      );
+      
+      this.addActionButton(
+        "supernova_row2_btn",
+        _("Row 2"),
+        () => {
+          this.supernovaRow = 2;
+          document.getElementById("supernova_row1_btn")?.classList.remove("bgabutton_selected");
+          document.getElementById("supernova_row2_btn")?.classList.add("bgabutton_selected");
+          this.updateSupernovaButtonState();
+        },
+        null,
+        false,
+        "blue"
+      );
+      
+      this.addActionButton(
+        "supernova_confirm_btn",
+        _("Confirm Supernova"),
+        () => {
+          if (this.supernovaSelectedCards.length !== 3) {
+            this.showMessage(_("You must select exactly 3 cards to discard"), "error");
+            return;
+          }
+          if (!this.supernovaRow) {
+            this.showMessage(_("You must select a row to draft"), "error");
+            return;
+          }
+          
+          const cardIds = this.supernovaSelectedCards.map(c => parseInt(c.id));
+          
+          this.bgaPerformAction("actSunAbility", {
+            args: JSON.stringify({
+              discarded_card_ids: cardIds,
+              row: this.supernovaRow
+            })
+          }).then(() => {
+            this.cleanupSupernovaDialog();
+          }).catch((error) => {
+            console.log("Supernova action failed:", error);
+          });
+        },
+        null,
+        false,
+        "green"
+      );
+      // Initially disabled
+      const confirmBtn = document.getElementById("supernova_confirm_btn");
+      if (confirmBtn) confirmBtn.classList.add("disabled");
+      
+      this.addActionButton(
+        "supernova_cancel_btn",
+        _("Cancel"),
+        () => {
+          this.cleanupSupernovaDialog();
+        },
+        null,
+        false,
+        "gray"
+      );
+    },
+    
+    updateSupernovaButtonState: function () {
+      const confirmBtn = document.getElementById("supernova_confirm_btn");
+      if (confirmBtn) {
+        if (this.supernovaSelectedCards.length === 3 && this.supernovaRow) {
+          confirmBtn.classList.remove("disabled");
+        } else {
+          confirmBtn.classList.add("disabled");
+        }
+      }
+    },
+    
+    cleanupSupernovaDialog: function () {
+      // Restore hand selection mode
+      this.handStock.setSelectionMode("single");
+      this.handStock.unselectAll();
+      
+      // Restore original click handler
+      if (this._originalHandClickHandler) {
+        this.handStock.onCardClick = this._originalHandClickHandler;
+        this._originalHandClickHandler = null;
+      } else {
+        this.handStock.onCardClick = (card) => {
+          this.playCard(this.player_id, card);
+        };
+      }
+      
+      // Remove buttons
+      ["supernova_row1_btn", "supernova_row2_btn", "supernova_confirm_btn", "supernova_cancel_btn"].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.remove();
+      });
+      
+      // Clear state
+      this.supernovaSelectedCards = [];
+      this.supernovaRow = null;
+    },
+    
+    showPulsarDialog: function () {
+      // Get player's comets from tableau
+      const playerId = this.player_id;
+      const tableau = Object.values(this.gamedatas.tableau[playerId] || {});
+      const comets = tableau.filter(c => c.type === "comet");
+      
+      if (comets.length === 0) {
+        this.showMessage(_("You don't have any comets to reuse"), "error");
+        return;
+      }
+      
+      // Update status bar
+      if (this.statusBar && this.statusBar.setTitle) {
+        this.statusBar.setTitle(_("Select a comet to reuse its ability"));
+      }
+      
+      // Enable selection on comet stocks
+      comets.forEach(comet => {
+        const parentId = comet.parent_id;
+        const cometStock = this.cometStocks[parentId];
+        if (cometStock) {
+          cometStock.setSelectionMode("single");
+          cometStock.onCardClick = (card) => {
+            // Execute Pulsar with this comet
+            this.bgaPerformAction("actSunAbility", {
+              args: JSON.stringify({
+                comet_card_id: parseInt(card.id)
+              })
+            }).then(() => {
+              this.cleanupPulsarDialog();
+            }).catch((error) => {
+              console.log("Pulsar action failed:", error);
+            });
+          };
+          
+          // Add visual highlight
+          const cardDiv = document.querySelector(`[data-card-id="${comet.id}"]`);
+          if (cardDiv) {
+            cardDiv.classList.add("selectable-comet");
+          }
+        }
+      });
+      
+      // Add cancel button
+      this.addActionButton(
+        "pulsar_cancel_btn",
+        _("Cancel"),
+        () => {
+          this.cleanupPulsarDialog();
+        },
+        null,
+        false,
+        "gray"
+      );
+    },
+    
+    cleanupPulsarDialog: function () {
+      const playerId = this.player_id;
+      const tableau = Object.values(this.gamedatas.tableau[playerId] || {});
+      const comets = tableau.filter(c => c.type === "comet");
+      
+      // Disable selection on comet stocks
+      comets.forEach(comet => {
+        const parentId = comet.parent_id;
+        const cometStock = this.cometStocks[parentId];
+        if (cometStock) {
+          cometStock.setSelectionMode("none");
+          cometStock.onCardClick = undefined;
+        }
+        
+        // Remove visual highlight
+        const cardDiv = document.querySelector(`[data-card-id="${comet.id}"]`);
+        if (cardDiv) {
+          cardDiv.classList.remove("selectable-comet");
+        }
+      });
+      
+      // Remove cancel button
+      const cancelBtn = document.getElementById("pulsar_cancel_btn");
+      if (cancelBtn) cancelBtn.remove();
+    },
+    
+    showProtostarDialog: function () {
+      // Get adjacent players (left and right)
+      const players = Object.values(this.gamedatas.players);
+      const currentPlayerIndex = players.findIndex(p => p.id == this.player_id);
+      
+      if (players.length < 2) {
+        this.showMessage(_("No other players to copy"), "error");
+        return;
+      }
+      
+      // Calculate left and right players
+      const leftIndex = (currentPlayerIndex - 1 + players.length) % players.length;
+      const rightIndex = (currentPlayerIndex + 1) % players.length;
+      
+      const leftPlayer = players[leftIndex];
+      const rightPlayer = players[rightIndex];
+      
+      // In 2-player game, left and right are the same
+      const isTwoPlayer = leftPlayer.id === rightPlayer.id;
+      
+      // Update status bar
+      if (this.statusBar && this.statusBar.setTitle) {
+        this.statusBar.setTitle(_("Select a player to copy their sun ability"));
+      }
+      
+      // Add player selection buttons
+      this.addActionButton(
+        "protostar_left_btn",
+        leftPlayer.name + " (" + (leftPlayer.sun_ability || "Unknown") + ")",
+        () => {
+          this.bgaPerformAction("actSunAbility", {
+            args: JSON.stringify({
+              target_player_id: parseInt(leftPlayer.id)
+            })
+          }).then(() => {
+            this.cleanupProtostarDialog();
+          }).catch((error) => {
+            console.log("Protostar action failed:", error);
+          });
+        },
+        null,
+        false,
+        "blue"
+      );
+      
+      if (!isTwoPlayer) {
+        this.addActionButton(
+          "protostar_right_btn",
+          rightPlayer.name + " (" + (rightPlayer.sun_ability || "Unknown") + ")",
+          () => {
+            this.bgaPerformAction("actSunAbility", {
+              args: JSON.stringify({
+                target_player_id: parseInt(rightPlayer.id)
+              })
+            }).then(() => {
+              this.cleanupProtostarDialog();
+            }).catch((error) => {
+              console.log("Protostar action failed:", error);
+            });
+          },
+          null,
+          false,
+          "blue"
+        );
+      }
+      
+      this.addActionButton(
+        "protostar_cancel_btn",
+        _("Cancel"),
+        () => {
+          this.cleanupProtostarDialog();
+        },
+        null,
+        false,
+        "gray"
+      );
+    },
+    
+    cleanupProtostarDialog: function () {
+      ["protostar_left_btn", "protostar_right_btn", "protostar_cancel_btn"].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) btn.remove();
+      });
+    },
+
     updateDiscardPileDrawIndicator: function () {
       const discardPileWrap = document.getElementById("discard-pile_wrap");
       if (!discardPileWrap) return;
@@ -1766,6 +2139,18 @@ define([
           this.counters[playerId].play_actions.setValue(play_actions);
         }
       }
+      
+      // Check if Diluna is no longer active and clear highlight
+      if (playerId == this.player_id && notif.diluna_active !== undefined) {
+        if (notif.diluna_active == 0 && this.dilunaActive) {
+          // Diluna is no longer active - remove highlight
+          const dilunaCard = document.querySelector(`[data-card-id="${this.dilunaActive}"]`);
+          if (dilunaCard) {
+            dilunaCard.classList.remove("diluna-active");
+          }
+          this.dilunaActive = null;
+        }
+      }
 
       // **Update gamedatas.tableau with the new card**
       if (!this.gamedatas.tableau[playerId]) {
@@ -1804,13 +2189,17 @@ define([
         deckTopElem.remove();
       }
 
-      // Update draw/open action counters after card is drawn
+      // Update draw/open/draft action counters after card is drawn
+      // (draft actions can be used for drawing)
       if (this.counters && this.counters[playerId]) {
         if (open_actions !== undefined) {
           this.counters[playerId].open_actions.setValue(open_actions);
         }
         if (draw_actions !== undefined) {
           this.counters[playerId].draw_actions.setValue(draw_actions);
+        }
+        if (notif.draft_actions !== undefined) {
+          this.counters[playerId].draft_actions.setValue(notif.draft_actions);
         }
       }
 
@@ -1852,13 +2241,17 @@ define([
         delete this.gamedatas.discardPile[card.id];
       }
 
-      // Update draw/open action counters
+      // Update draw/open/draft action counters
+      // (draft actions can be used for drawing)
       if (this.counters && this.counters[playerId]) {
         if (open_actions !== undefined) {
           this.counters[playerId].open_actions.setValue(open_actions);
         }
         if (draw_actions !== undefined) {
           this.counters[playerId].draw_actions.setValue(draw_actions);
+        }
+        if (notif.draft_actions !== undefined) {
+          this.counters[playerId].draft_actions.setValue(notif.draft_actions);
         }
       }
 
@@ -1946,26 +2339,272 @@ define([
       // Nothing to do visually for a pass
     },
 
-    notif_sunAbilityUsed: function (notif) {
+    /*******************************
+    *    SUPER STAR CARDS REVEALED *
+    *******************************/
+    notif_superStarCardsRevealed: function (notif) {
+      console.log("notif_superStarCardsRevealed", notif);
+      const cards = notif.cards || [];
+      
+      if (cards.length < 4) {
+        this.showMessage(_("Not enough cards revealed"), "error");
+        return;
+      }
+      
+      // Show the Super Star selection dialog
+      this.showSuperStarSelectionDialog(cards);
+    },
+    
+    showSuperStarSelectionDialog: function (cards) {
+      // Create a dialog container similar to discard pile view
+      let viewContainer = document.getElementById("super-star-view-container");
+      
+      if (viewContainer) {
+        viewContainer.remove();
+      }
+      
+      // Create the container div above solar-grid
+      const solarArea = document.getElementById("solar-area");
+      viewContainer = document.createElement("div");
+      viewContainer.id = "super-star-view-container";
+      viewContainer.className = "whiteblock";
+      viewContainer.style.marginBottom = "10px";
+      viewContainer.style.padding = "15px";
+      
+      // Insert before solar-grid
+      const solarGrid = document.getElementById("solar-grid");
+      solarArea.insertBefore(viewContainer, solarGrid);
+      
+      // Create header
+      const header = document.createElement("div");
+      header.style.display = "flex";
+      header.style.justifyContent = "space-between";
+      header.style.alignItems = "center";
+      header.style.marginBottom = "10px";
+      
+      const title = document.createElement("b");
+      title.className = "section-label";
+      title.textContent = _("Super Star - Select 2 cards to add to your hand");
+      
+      header.appendChild(title);
+      viewContainer.appendChild(header);
+      
+      // Create container for cards
+      const cardsContainer = document.createElement("div");
+      cardsContainer.id = "super-star-cards";
+      cardsContainer.style.display = "flex";
+      cardsContainer.style.flexWrap = "wrap";
+      cardsContainer.style.gap = "10px";
+      cardsContainer.style.justifyContent = "center";
+      cardsContainer.style.marginBottom = "15px";
+      viewContainer.appendChild(cardsContainer);
+      
+      // Create a LineStock for displaying cards
+      this.superStarStock = new BgaCards.LineStock(
+        this.cardsManager,
+        cardsContainer,
+        {
+          gap: "15px",
+          selectableCardStyle: {
+            outlineSize: 0,
+          },
+          selectedCardStyle: {
+            outlineColor: "rgba(0, 255, 100, 0.8)",
+            outlineWidth: "4px",
+          },
+        }
+      );
+      
+      // Enable multiple selection
+      this.superStarStock.setSelectionMode("multiple");
+      
+      // Track selected cards
+      this.superStarSelectedCards = [];
+      
+      // Add cards to the stock
+      cards.forEach(card => {
+        this.superStarStock.addCard(card);
+      });
+      
+      // Set click handler for selection
+      this.superStarStock.onCardClick = (card) => {
+        const index = this.superStarSelectedCards.findIndex(c => c.id === card.id);
+        if (index >= 0) {
+          // Deselect
+          this.superStarSelectedCards.splice(index, 1);
+          this.superStarStock.unselectCard(card);
+        } else if (this.superStarSelectedCards.length < 2) {
+          // Select
+          this.superStarSelectedCards.push(card);
+          this.superStarStock.selectCard(card);
+        } else {
+          this.showMessage(_("You can only select 2 cards"), "info");
+        }
+        this.updateSuperStarButtonState();
+      };
+      
+      // Create button container
+      const buttonContainer = document.createElement("div");
+      buttonContainer.style.display = "flex";
+      buttonContainer.style.justifyContent = "center";
+      buttonContainer.style.gap = "10px";
+      viewContainer.appendChild(buttonContainer);
+      
+      // Add confirm button
+      const confirmBtn = document.createElement("button");
+      confirmBtn.id = "super_star_confirm_btn";
+      confirmBtn.className = "bgabutton bgabutton_green disabled";
+      confirmBtn.textContent = _("Confirm Selection (0/2)");
+      confirmBtn.onclick = () => {
+        if (this.superStarSelectedCards.length !== 2) {
+          this.showMessage(_("You must select exactly 2 cards"), "error");
+          return;
+        }
+        
+        const cardIds = this.superStarSelectedCards.map(c => parseInt(c.id));
+        
+        this.bgaPerformAction("actSunAbility", {
+          args: JSON.stringify({
+            selected_card_ids: cardIds
+          })
+        }).then(() => {
+          this.cleanupSuperStarDialog();
+        }).catch((error) => {
+          console.log("Super Star action failed:", error);
+        });
+      };
+      buttonContainer.appendChild(confirmBtn);
+      
+      // Add cancel button
+      const cancelBtn = document.createElement("button");
+      cancelBtn.id = "super_star_cancel_btn";
+      cancelBtn.className = "bgabutton bgabutton_gray";
+      cancelBtn.textContent = _("Cancel");
+      cancelBtn.onclick = () => {
+        this.cleanupSuperStarDialog();
+      };
+      buttonContainer.appendChild(cancelBtn);
+      
+      // Update status bar
+      if (this.statusBar && this.statusBar.setTitle) {
+        this.statusBar.setTitle(_("Select 2 cards to add to your hand"));
+      }
+    },
+    
+    updateSuperStarButtonState: function () {
+      const confirmBtn = document.getElementById("super_star_confirm_btn");
+      if (confirmBtn) {
+        const count = this.superStarSelectedCards ? this.superStarSelectedCards.length : 0;
+        confirmBtn.textContent = _("Confirm Selection") + ` (${count}/2)`;
+        
+        if (count === 2) {
+          confirmBtn.classList.remove("disabled");
+        } else {
+          confirmBtn.classList.add("disabled");
+        }
+      }
+    },
+    
+    cleanupSuperStarDialog: async function () {
+      // Remove the selection container
+      const viewContainer = document.getElementById("super-star-view-container");
+      if (viewContainer) {
+        // Clear the stock first
+        if (this.superStarStock && this.superStarStock.items) {
+          const itemsCopy = Array.from(this.superStarStock.items);
+          for (let item of itemsCopy) {
+            if (item && item.id) {
+              try {
+                await this.superStarStock.removeCard(item);
+              } catch (e) {
+                console.warn("Error removing card from super star stock:", e);
+              }
+            }
+          }
+        }
+        viewContainer.remove();
+      }
+      
+      // Clear state
+      this.superStarStock = null;
+      this.superStarSelectedCards = [];
+    },
+
+    notif_sunAbilityUsed: async function (notif) {
       console.log("notif_sunAbilityUsed", notif);
+      const playerId = notif.player_id;
+      
       // Hide the Sun Ability button if this player used it
-      if (notif.player_id === this.player_id) {
+      if (playerId === this.player_id) {
         const btn = document.getElementById("sun_ability_btn");
         if (btn) btn.remove();
       }
       
       // Update action counters if provided
-      if (notif.open_actions !== undefined && this.counters && this.counters[notif.player_id]) {
-        this.counters[notif.player_id].open_actions.setValue(notif.open_actions);
+      if (notif.open_actions !== undefined && this.counters && this.counters[playerId]) {
+        this.counters[playerId].open_actions.setValue(notif.open_actions);
       }
-      if (notif.draft_actions !== undefined && this.counters && this.counters[notif.player_id]) {
-        this.counters[notif.player_id].draft_actions.setValue(notif.draft_actions);
+      if (notif.draft_actions !== undefined && this.counters && this.counters[playerId]) {
+        this.counters[playerId].draft_actions.setValue(notif.draft_actions);
       }
-      if (notif.draw_actions !== undefined && this.counters && this.counters[notif.player_id]) {
-        this.counters[notif.player_id].draw_actions.setValue(notif.draw_actions);
+      if (notif.draw_actions !== undefined && this.counters && this.counters[playerId]) {
+        this.counters[playerId].draw_actions.setValue(notif.draw_actions);
       }
-      if (notif.play_actions !== undefined && this.counters && this.counters[notif.player_id]) {
-        this.counters[notif.player_id].play_actions.setValue(notif.play_actions);
+      if (notif.play_actions !== undefined && this.counters && this.counters[playerId]) {
+        this.counters[playerId].play_actions.setValue(notif.play_actions);
+      }
+      
+      // Handle Red Dwarf - draw cards from discard pile
+      if (notif.ability === 'Red Dwarf' && notif.drawnCards) {
+        for (const card of notif.drawnCards) {
+          // Remove from discard pile visual
+          if (this.discardDeck) {
+            try {
+              await this.discardDeck.removeCard(card);
+            } catch (e) {
+              console.warn("Error removing card from discard pile:", e);
+            }
+          }
+          
+          // Update gamedatas discard pile
+          if (this.gamedatas.discardPile && card.id) {
+            delete this.gamedatas.discardPile[card.id];
+          }
+          
+          // Add to hand if it's the current player
+          if (playerId == this.player_id) {
+            await this.handStock.addCard(card);
+          }
+        }
+        
+        // Update discard count display
+        if (notif.cardsInDiscard !== undefined) {
+          const discardCountEl = document.getElementById("discard-count");
+          if (discardCountEl) {
+            discardCountEl.innerText = notif.cardsInDiscard;
+          }
+        }
+        
+        // Refresh discard pile view if it's visible
+        if (this.discardPileViewVisible) {
+          this.refreshDiscardPileView();
+        }
+      }
+      
+      // Handle Super Star - add selected cards to hand
+      if (notif.ability === 'Super Star' && notif.selectedCards) {
+        // Clean up the selection dialog first (if still open)
+        await this.cleanupSuperStarDialog();
+        
+        // Add selected cards to hand if it's the current player
+        if (playerId == this.player_id) {
+          for (const card of notif.selectedCards) {
+            await this.handStock.addCard(card);
+          }
+        }
+        
+        // Update deck count (2 cards removed, 2 moved to bottom = net 0 change to count, but position changed)
+        // The deck count doesn't change, just card positions
       }
     },
 
@@ -2070,6 +2709,34 @@ define([
         } else {
           console.warn("Action counter not found:", counterName, "for player", playerId);
         }
+      }
+    },
+
+    /*******************************
+    *       DILUNA ACTIVATED       *
+    *******************************/
+    notif_dilunaActivated: function (notif) {
+      console.log("notif_dilunaActivated", notif);
+      const playerId = notif.player_id;
+      const dilunaPlanetId = notif.diluna_planet_id;
+      
+      // Track that Diluna is active for this player
+      if (playerId == this.player_id) {
+        this.dilunaActive = dilunaPlanetId;
+        
+        // Show message to player
+        this.showMessage(_("Diluna ability active - play moons onto Diluna!"), "info");
+        
+        // Highlight the Diluna planet
+        const dilunaCard = document.querySelector(`[data-card-id="${dilunaPlanetId}"]`);
+        if (dilunaCard) {
+          dilunaCard.classList.add("diluna-active");
+        }
+      }
+      
+      // Update action counter
+      if (notif.new_value !== undefined && this.counters && this.counters[playerId]) {
+        this.counters[playerId].play_actions.setValue(notif.new_value);
       }
     },
 

@@ -115,6 +115,9 @@ class MoonPlacement extends GameState
         $card['parent_id'] = $parent_id;
         $card['parent_slot'] = $parent_slot;
 
+        // Grant any actions from the moon (and check parent planet triggered abilities)
+        $this->game->getCardActions($card, $activePlayerId, $parent_id);
+
         // Update moon counter
         $this->game->moon_count->inc($activePlayerId, 1);
         $newValue = $this->game->moon_count->get($activePlayerId);
@@ -138,7 +141,11 @@ class MoonPlacement extends GameState
                 'newValue' => $newValue,
                 'counter' => 'moon',
                 'newRingCount' => $newRingCount,
-                'target_planet_id' => $target_planet_id
+                'target_planet_id' => $target_planet_id,
+                'open_actions' => $this->game->open_actions->get($activePlayerId),
+                'draft_actions' => $this->game->draft_actions->get($activePlayerId),
+                'draw_actions' => $this->game->draw_actions->get($activePlayerId),
+                'play_actions' => $this->game->play_actions->get($activePlayerId),
             ]
         );
 

@@ -402,3 +402,81 @@ box-shadow: 0 0 10px 4px rgba(255, 0, 221, 1);
         box-shadow: 0 0 25px 10px rgba(255, 255, 0, 0.8);
     }
 }
+
+/* Selectable card highlights for moon placement */
+.selectable-planet {
+    cursor: pointer !important;
+    box-shadow: 0 0 15px 5px rgba(0, 255, 100, 0.7) !important;
+    animation: selectable-pulse 1.5s ease-in-out infinite;
+}
+
+/* Selectable comet highlights for Pulsar ability */
+.selectable-comet {
+    cursor: pointer !important;
+    box-shadow: 0 0 15px 5px rgba(255, 165, 0, 0.7) !important;
+    animation: selectable-pulse 1.5s ease-in-out infinite;
+}
+
+/* Diluna active highlight - moons must be played here */
+.diluna-active {
+    box-shadow: 0 0 20px 8px rgba(100, 200, 255, 0.8) !important;
+    animation: diluna-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes diluna-pulse {
+    0%, 100% {
+        box-shadow: 0 0 20px 8px rgba(100, 200, 255, 0.8);
+    }
+    50% {
+        box-shadow: 0 0 30px 12px rgba(100, 200, 255, 1);
+    }
+}
+
+@keyframes selectable-pulse {
+    0%, 100% {
+        box-shadow: 0 0 15px 5px rgba(0, 255, 100, 0.7);
+    }
+    50% {
+        box-shadow: 0 0 25px 10px rgba(0, 255, 100, 0.9);
+    }
+}
+
+/* Disabled button style */
+.bgabutton.disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    pointer-events: none;
+}
+
+/* Selected button style for Supernova row selection */
+.bgabutton.bgabutton_selected {
+    background-color: #0a5 !important;
+    border-color: #063 !important;
+}
+
+/* Super Star selection dialog */
+#super-star-view-container {
+    background-color: rgba(0, 50, 100, 0.95);
+    border: 3px solid #4a9eff;
+    box-shadow: 0 0 20px rgba(74, 158, 255, 0.5);
+}
+
+#super-star-view-container .section-label {
+    color: #fff;
+    font-size: 18px;
+}
+
+#super-star-cards .card {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#super-star-cards .card:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+#super-star-cards .card.bga-cards_selected-card {
+    box-shadow: 0 0 20px 5px rgba(0, 255, 100, 0.8) !important;
+    outline: 3px solid #0f0 !important;
+}

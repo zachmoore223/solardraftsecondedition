@@ -30,6 +30,10 @@ class NextPlayer extends \Bga\GameFramework\States\GameState
         // Give some extra time to the active player when he completed an action
         $this->game->giveExtraTime($activePlayerId);
         
+        // Clear any active ability restrictions when turn ends
+        $this->game->setGameStateValue('diluna_active', 0);
+        // Note: shell_star_active is cleared in PlayerTurn::onEnteringState
+        
         // Check if deck is empty (game ending)
         $deckEmpty = $this->game->getGameStateValue('deck_empty') == 1;
         $lastCardDrawer = $this->game->getGameStateValue('last_card_drawer');

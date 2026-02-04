@@ -193,6 +193,7 @@ class Game extends \Bga\GameFramework\Table
             'deck_empty' => 13, // Flag: 1 if deck is empty (game ending), 0 otherwise
             'last_card_drawer' => 14, // Player ID who drew the last card
             'draw_from_discard_only' => 15, // Player ID who must draw from discard pile (0 = none)
+            'diluna_active' => 16, // Card ID of Diluna planet (moons must be played onto it), 0 = none
         ]); // mandatory, even if the array is empty
 
         $this->blue_planet_count = $this->counterFactory->createPlayerCounter('blue_planet_count');
@@ -1767,25 +1768,23 @@ class Game extends \Bga\GameFramework\Table
      * Process comet abilities when played - grants actions to player
      * @param array $card The comet card being played
      * @param int $playerId The player who played the comet
-     * @param int|null $adjacentPlanetId The planet this comet is adjacent to (for moon/ring counting)
+     * @param int|null $adjacentPlanetId The planet this card is adjacent to (for comets) or orbits (for moons)
      */
     public function getCardActions(array $card, int $playerId, ?int $adjacentPlanetId = null)
     {
-        // Only process comets
-        if ($card['type'] !== 'comet') {
-            return;
-        }
-
         $cardNum = $card['type_arg'];
+        $cardType = $card['type'];
         
         // Get adjacent planet info if needed for moon/ring counting
         $adjacentMoonCount = 0;
         $adjacentRingCount = 0;
+        $adjacentPlanetInfo = null;
         if ($adjacentPlanetId !== null) {
             $tableau = $this->getTableauCards($playerId);
             // Find the adjacent planet
             foreach ($tableau['planets'] as $planet) {
                 if ($planet['id'] == $adjacentPlanetId) {
+                    $adjacentPlanetInfo = $planet;
                     // Count moons orbiting this planet
                     $moons = $this->getMoonsForPlanet($adjacentPlanetId, $tableau['moons']);
                     $adjacentMoonCount = count($moons);
@@ -1797,7 +1796,170 @@ class Game extends \Bga\GameFramework\Table
             }
         }
 
+        // ========== PLANET ABILITIES ==========
+        if ($cardType === 'planet') {
+            switch ($cardNum) {
+                case 8: // Cometviewer: When played, you may immediately PLAY A COMET
+                    $this->grantPlayAction($playerId, 1);
+                    $this->notify->all(
+                        'actionGranted',
+                        clienttranslate('${player_name} may play a comet (Cometviewer ability)'),
+                        [
+                            'player_id' => $playerId,
+                            'player_name' => $this->getPlayerNameById($playerId),
+                            'action_type' => 'play',
+                            'new_value' => $this->play_actions->get($playerId)
+                        ]
+                    );
+                    break;
+                    
+                case 9: // Diluna: When played, you may immediately PLAY up TWO MOONS onto this planet
+                    // Set flag to restrict plays to moons on this specific planet
+                    $this->setGameStateValue('diluna_active', (int)$card['id']);
+                    $this->grantPlayAction($playerId, 2);
+                    $this->notify->all(
+                        'dilunaActivated',
+                        clienttranslate('${player_name} may play up to 2 moons onto Diluna'),
+                        [
+                            'player_id' => $playerId,
+                            'player_name' => $this->getPlayerNameById($playerId),
+                            'diluna_planet_id' => (int)$card['id'],
+                            'action_type' => 'play',
+                            'new_value' => $this->play_actions->get($playerId)
+                        ]
+                    );
+                    break;
+            }
+            return;
+        }
+        
+        // ========== MOON ABILITIES ==========
+        if ($cardType === 'moon') {
+            // First, check if the parent planet has triggered abilities
+            if ($adjacentPlanetInfo !== null) {
+                $parentPlanetNum = $adjacentPlanetInfo['type_arg'];
+                
+                switch ($parentPlanetNum) {
+                    case 44: // Lycanthropia: Each time you play a MOON onto this planet, DRAFT A CARD
+                        $this->grantDraftAction($playerId, 1);
+                        $this->notify->all(
+                            'actionGranted',
+                            clienttranslate('${player_name} drafts a card (Lycanthropia triggered)'),
+                            [
+                                'player_id' => $playerId,
+                                'player_name' => $this->getPlayerNameById($playerId),
+                                'action_type' => 'draft',
+                                'new_value' => $this->draft_actions->get($playerId)
+                            ]
+                        );
+                        break;
+                        
+                    case 52: // Lunaria: Each time you play a MOON onto this planet, gain ANOTHER ACTION
+                        $this->open_actions->inc($playerId, 1);
+                        $this->notify->all(
+                            'actionGranted',
+                            clienttranslate('${player_name} gains an open action (Lunaria triggered)'),
+                            [
+                                'player_id' => $playerId,
+                                'player_name' => $this->getPlayerNameById($playerId),
+                                'action_type' => 'open',
+                                'new_value' => $this->open_actions->get($playerId)
+                            ]
+                        );
+                        break;
+                }
+            }
+            
+            // Now process the moon's own ability
+            switch ($cardNum) {
+                case 92: // New1: PLAY A COMET
+                    $this->grantPlayAction($playerId, 1);
+                    $this->notify->all(
+                        'actionGranted',
+                        clienttranslate('${player_name} may play a comet (moon ability)'),
+                        [
+                            'player_id' => $playerId,
+                            'player_name' => $this->getPlayerNameById($playerId),
+                            'action_type' => 'play',
+                            'new_value' => $this->play_actions->get($playerId)
+                        ]
+                    );
+                    break;
+                    
+                case 93: // New2: DRAFT A CARD
+                    $this->grantDraftAction($playerId, 1);
+                    break;
+                    
+                case 94: // New3: DRAW A CARD
+                    $this->grantDrawAction($playerId, 1);
+                    break;
+                    
+                case 102: // Qixx: PLAY A MOON
+                    $this->grantPlayAction($playerId, 1);
+                    $this->notify->all(
+                        'actionGranted',
+                        clienttranslate('${player_name} may play a moon (Qixx ability)'),
+                        [
+                            'player_id' => $playerId,
+                            'player_name' => $this->getPlayerNameById($playerId),
+                            'action_type' => 'play',
+                            'new_value' => $this->play_actions->get($playerId)
+                        ]
+                    );
+                    break;
+                    
+                case 109: // Xiq: PLAY A CARD
+                    $this->grantPlayAction($playerId, 1);
+                    break;
+            }
+            return;
+        }
+
+        // ========== COMET ABILITIES ==========
+        if ($cardType !== 'comet') {
+            return;
+        }
+
+        // Check for triggered abilities from planets in player's tableau
+        $tableau = $this->getTableauCards($playerId);
+        
+        // Check if player has Ishtar (#59): "Each time you play COMET, DRAW A CARD"
+        foreach ($tableau['planets'] as $planet) {
+            if ($planet['type_arg'] == 59) {
+                $this->grantDrawAction($playerId, 1);
+                $this->notify->all(
+                    'actionGranted',
+                    clienttranslate('${player_name} draws a card (Ishtar triggered)'),
+                    [
+                        'player_id' => $playerId,
+                        'player_name' => $this->getPlayerNameById($playerId),
+                        'action_type' => 'draw',
+                        'new_value' => $this->draw_actions->get($playerId)
+                    ]
+                );
+                break; // Only trigger once even if player has multiple Ishtars
+            }
+        }
+        
+        // Check if adjacent planet is "Repeat double" (#14): doubles comet effect
+        $shouldRepeatEffect = false;
+        if ($adjacentPlanetInfo !== null && $adjacentPlanetInfo['type_arg'] == 14) {
+            $shouldRepeatEffect = true;
+            $this->notify->all(
+                'message',
+                clienttranslate('${player_name}\'s comet effect is doubled by Repeat double!'),
+                [
+                    'player_id' => $playerId,
+                    'player_name' => $this->getPlayerNameById($playerId),
+                ]
+            );
+        }
+
         // Process based on comet number (61-85)
+        // If shouldRepeatEffect is true, we'll process the switch twice
+        $repeatCount = $shouldRepeatEffect ? 2 : 1;
+        
+        for ($i = 0; $i < $repeatCount; $i++) {
         switch ($cardNum) {
             case 61: // Comet1: DRAFT 2 CARDS
                 $this->grantDraftAction($playerId, 2);
@@ -1951,6 +2113,7 @@ class Game extends \Bga\GameFramework\Table
                 $this->grantDraftAction($playerId, 1);
                 break;
         }
+        } // End of repeat loop for "Repeat double" planet
     }
 
 }
