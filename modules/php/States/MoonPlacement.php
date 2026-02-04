@@ -122,6 +122,9 @@ class MoonPlacement extends GameState
         $this->game->moon_count->inc($activePlayerId, 1);
         $newValue = $this->game->moon_count->get($activePlayerId);
 
+        // Check for bonus token
+        $this->game->checkBonusToken($activePlayerId, 'moon');
+
         // Update ring counter if applicable
         $newRingCount = 0;
         if ($card['rings'] > 0) {
