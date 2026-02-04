@@ -493,6 +493,9 @@ class PlayerTurn extends GameState
                 $this->game->moon_count->inc($activePlayerId, 1);
                 $newValue = $this->game->moon_count->get($activePlayerId);
                 
+                // Check for bonus token
+                $this->game->checkBonusToken($activePlayerId, 'moon');
+                
                 // Update ring counter if applicable
                 if (isset($card['rings']) && $card['rings'] > 0) {
                     $this->game->ring_count->inc($activePlayerId, $card['rings']);
@@ -610,24 +613,32 @@ class PlayerTurn extends GameState
                     $this->game->blue_planet_count->inc($activePlayerId, $incrementAmount);
                     $newValue = $this->game->blue_planet_count->get($activePlayerId);
                     $counter = 'blue';
+                    // Check for bonus token
+                    $this->game->checkBonusToken($activePlayerId, 'blue_planet');
                     break;
 
                 case 'GREEN':
                     $this->game->green_planet_count->inc($activePlayerId, $incrementAmount);
                     $newValue = $this->game->green_planet_count->get($activePlayerId);
                     $counter = 'green';
+                    // Check for bonus token
+                    $this->game->checkBonusToken($activePlayerId, 'green_planet');
                     break;
 
                 case 'RED':
                     $this->game->red_planet_count->inc($activePlayerId, $incrementAmount);
                     $newValue = $this->game->red_planet_count->get($activePlayerId);
                     $counter = 'red';
+                    // Check for bonus token
+                    $this->game->checkBonusToken($activePlayerId, 'red_planet');
                     break;
 
                 case 'TAN':
                     $this->game->tan_planet_count->inc($activePlayerId, $incrementAmount);
                     $newValue = $this->game->tan_planet_count->get($activePlayerId);
                     $counter = 'tan';
+                    // Check for bonus token
+                    $this->game->checkBonusToken($activePlayerId, 'tan_planet');
                     break;
             }
         }
@@ -641,12 +652,16 @@ class PlayerTurn extends GameState
             $this->game->comet_count->inc($activePlayerId, 1);
             $newValue = $this->game->comet_count->get($activePlayerId);
             $counter = 'comet';
+            // Check for bonus token
+            $this->game->checkBonusToken($activePlayerId, 'comet');
         }
 
         if ($card['type'] === 'moon') {
             $this->game->moon_count->inc($activePlayerId, 1);
             $newValue = $this->game->moon_count->get($activePlayerId);
             $counter = 'moon';
+            // Check for bonus token
+            $this->game->checkBonusToken($activePlayerId, 'moon');
         }
 
         // Notify all players (action was already consumed earlier, and new actions were granted)

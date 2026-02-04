@@ -636,6 +636,32 @@ define([
                     </div>
 
                 </div>
+                <div class="bonus-tokens-container" id="bonus-tokens-${playerId}">
+                    <div class="bonus-token" id="bonus-blue_planet-${playerId}" data-token="blue_planet" title="Blue Planet Majority (5 pts)">
+                        <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-bluePlanet.png"/>
+                        <span class="bonus-token-star">★</span>
+                    </div>
+                    <div class="bonus-token" id="bonus-green_planet-${playerId}" data-token="green_planet" title="Green Planet Majority (5 pts)">
+                        <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-greenPlanet.png"/>
+                        <span class="bonus-token-star">★</span>
+                    </div>
+                    <div class="bonus-token" id="bonus-red_planet-${playerId}" data-token="red_planet" title="Red Planet Majority (5 pts)">
+                        <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-redPlanet.png"/>
+                        <span class="bonus-token-star">★</span>
+                    </div>
+                    <div class="bonus-token" id="bonus-tan_planet-${playerId}" data-token="tan_planet" title="Tan Planet Majority (5 pts)">
+                        <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-tanPlanet.png"/>
+                        <span class="bonus-token-star">★</span>
+                    </div>
+                    <div class="bonus-token" id="bonus-comet-${playerId}" data-token="comet" title="Comet Majority (5 pts)">
+                        <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-comet.png"/>
+                        <span class="bonus-token-star">★</span>
+                    </div>
+                    <div class="bonus-token" id="bonus-moon-${playerId}" data-token="moon" title="Moon Majority (5 pts)">
+                        <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-moon.png"/>
+                        <span class="bonus-token-star">★</span>
+                    </div>
+                </div>
             `
           );
         }
@@ -724,6 +750,9 @@ define([
           }
         }
       }
+
+      // Initialize bonus tokens display
+      this.updateBonusTokensDisplay(gamedatas.bonusTokens);
 
       this.setupNotifications();
       console.log("FULL GAMEDATAS:", gamedatas);
@@ -2747,7 +2776,7 @@ define([
       console.log("notif_scoreUpdated", notif);
       const playerId = notif.player_id;
       const score = notif.score;
-
+      
       // Update the built-in BGA scoreCtrl (displays with star icon in player panel)
       if (this.scoreCtrl && this.scoreCtrl[playerId]) {
         this.scoreCtrl[playerId].toValue(score);
@@ -2756,6 +2785,85 @@ define([
       // Also update gamedatas for refresh safety
       if (this.gamedatas && this.gamedatas.players && this.gamedatas.players[playerId]) {
         this.gamedatas.players[playerId].score = score.toString();
+      }
+    },
+
+    /*******************************
+    *        BONUS TOKENS          *
+    *******************************/
+    notif_bonusTokenClaimed: function (notif) {
+      console.log("notif_bonusTokenClaimed", notif);
+      this.updateSingleBonusToken(notif.token_type, notif.player_id, notif.previous_owner_id);
+    },
+
+    notif_bonusTokenStolen: function (notif) {
+      console.log("notif_bonusTokenStolen", notif);
+      this.updateSingleBonusToken(notif.token_type, notif.player_id, notif.previous_owner_id);
+    },
+
+    /**
+     * Update the display of all bonus tokens based on the bonusTokens data
+     * @param {Object} bonusTokens - Map of token_type => player_id (or null)
+     */
+    updateBonusTokensDisplay: function (bonusTokens) {
+      if (!bonusTokens) return;
+      
+      const tokenTypes = ['moon', 'comet', 'blue_planet', 'green_planet', 'red_planet', 'tan_planet'];
+      
+      // First, hide all bonus tokens
+      for (const playerId in this.gamedatas.players) {
+        for (const tokenType of tokenTypes) {
+          const tokenEl = document.getElementById(`bonus-${tokenType}-${playerId}`);
+          if (tokenEl) {
+            tokenEl.classList.remove('active');
+          }
+        }
+      }
+      
+      // Then, show the tokens for players who own them
+      for (const tokenType of tokenTypes) {
+        const ownerId = bonusTokens[tokenType];
+        if (ownerId) {
+          const tokenEl = document.getElementById(`bonus-${tokenType}-${ownerId}`);
+          if (tokenEl) {
+            tokenEl.classList.add('active');
+          }
+        }
+      }
+      
+      // Update local gamedatas
+      if (this.gamedatas) {
+        this.gamedatas.bonusTokens = bonusTokens;
+      }
+    },
+
+    /**
+     * Update a single bonus token when it's claimed or stolen
+     * @param {string} tokenType - The type of token
+     * @param {number} newOwnerId - The new owner's player ID
+     * @param {number|null} previousOwnerId - The previous owner's player ID (or null)
+     */
+    updateSingleBonusToken: function (tokenType, newOwnerId, previousOwnerId) {
+      // Remove from previous owner
+      if (previousOwnerId) {
+        const prevTokenEl = document.getElementById(`bonus-${tokenType}-${previousOwnerId}`);
+        if (prevTokenEl) {
+          prevTokenEl.classList.remove('active');
+          prevTokenEl.classList.add('token-lost');
+          setTimeout(() => prevTokenEl.classList.remove('token-lost'), 500);
+        }
+      }
+      
+      // Add to new owner with animation
+      const newTokenEl = document.getElementById(`bonus-${tokenType}-${newOwnerId}`);
+      if (newTokenEl) {
+        newTokenEl.classList.add('active', 'token-gained');
+        setTimeout(() => newTokenEl.classList.remove('token-gained'), 500);
+      }
+      
+      // Update local gamedatas
+      if (this.gamedatas && this.gamedatas.bonusTokens) {
+        this.gamedatas.bonusTokens[tokenType] = newOwnerId;
       }
     },
 

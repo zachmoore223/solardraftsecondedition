@@ -41,6 +41,15 @@ CREATE TABLE IF NOT EXISTS `card` (
   PRIMARY KEY (`card_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 AUTO_INCREMENT=1 ;
 
+-- Bonus tokens table: tracks who holds each majority bonus token
+-- token_type: moon, comet, blue_planet, green_planet, red_planet, tan_planet
+-- player_id: NULL if unclaimed, otherwise the player who holds it
+CREATE TABLE IF NOT EXISTS `bonus_token` (
+  `token_type` varchar(16) NOT NULL,
+  `player_id` int(10) unsigned DEFAULT NULL,
+  PRIMARY KEY (`token_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
 -- Example 2: add a custom field to the standard "player" table
 -- ALTER TABLE `player` ADD `player_my_custom_field` INT UNSIGNED NOT NULL DEFAULT '0';
 

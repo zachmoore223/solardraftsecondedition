@@ -396,6 +396,11 @@ class Game extends \Bga\GameFramework\Table
             $result['solarRow1'] = $solarRow1Slots;
             $result['solarRow2'] = $solarRow2Slots;
 
+            // ----------------------
+            // BONUS TOKENS
+            // ----------------------
+            $result['bonusTokens'] = $this->getBonusTokens();
+
             return $result;
         }
 
@@ -432,6 +437,12 @@ class Game extends \Bga\GameFramework\Table
         foreach ($playerIds as $idx => $playerId) {
             $abilityId = $abilityIds[$idx % count($abilityIds)];
             $this->sun_ability_id->set($playerId, $abilityId);
+        }
+        
+        // Initialize bonus tokens (all unclaimed at start)
+        $bonusTokenTypes = ['moon', 'comet', 'blue_planet', 'green_planet', 'red_planet', 'tan_planet'];
+        foreach ($bonusTokenTypes as $tokenType) {
+            $this->DbQuery("INSERT INTO bonus_token (token_type, player_id) VALUES ('$tokenType', NULL)");
         }
         
         // Set the colors of the players with HTML color code. The default below is red/green/blue/orange/brown. The
@@ -1671,6 +1682,9 @@ class Game extends \Bga\GameFramework\Table
             }
         }
         
+        // Add bonus token points (5 points per token held)
+        $score += $this->calculateBonusTokenScore($playerId);
+        
         return $score;
     }
 
@@ -2114,6 +2128,150 @@ class Game extends \Bga\GameFramework\Table
                 break;
         }
         } // End of repeat loop for "Repeat double" planet
+    }
+
+    /*************************************************
+     * BONUS TOKEN METHODS
+     *************************************************/
+    
+    /**
+     * Get all bonus tokens and their current owners
+     * @return array token_type => player_id (or null if unclaimed)
+     */
+    public function getBonusTokens(): array
+    {
+        $tokens = $this->getCollectionFromDb(
+            "SELECT token_type, player_id FROM bonus_token"
+        );
+        
+        $result = [];
+        foreach ($tokens as $token) {
+            $result[$token['token_type']] = $token['player_id'] ? (int)$token['player_id'] : null;
+        }
+        return $result;
+    }
+    
+    /**
+     * Check if a bonus token should be claimed or transferred after a card is played
+     * @param int $playerId The player who just played a card
+     * @param string $tokenType The type of bonus token to check (moon, comet, blue_planet, etc.)
+     */
+    public function checkBonusToken(int $playerId, string $tokenType): void
+    {
+        // Get the counter name for this token type
+        $counterName = $this->getCounterForTokenType($tokenType);
+        if (!$counterName) {
+            return;
+        }
+        
+        // Get the player's current count for this type
+        $playerCount = $this->$counterName->get($playerId);
+        
+        // Minimum of 2 required to claim a bonus token
+        if ($playerCount < 2) {
+            return;
+        }
+        
+        // Get current token owner
+        $currentOwner = $this->getUniqueValueFromDb(
+            "SELECT player_id FROM bonus_token WHERE token_type = '$tokenType'"
+        );
+        $currentOwnerId = $currentOwner ? (int)$currentOwner : null;
+        
+        // If this player already owns the token, no change needed
+        if ($currentOwnerId === $playerId) {
+            return;
+        }
+        
+        // If unclaimed (null), player claims it with 2+
+        if ($currentOwnerId === null) {
+            $this->transferBonusToken($tokenType, $playerId, null);
+            return;
+        }
+        
+        // If owned by another player, check if current player has MORE
+        $ownerCount = $this->$counterName->get($currentOwnerId);
+        
+        if ($playerCount > $ownerCount) {
+            $this->transferBonusToken($tokenType, $playerId, $currentOwnerId);
+        }
+    }
+    
+    /**
+     * Transfer a bonus token to a new owner
+     */
+    private function transferBonusToken(string $tokenType, int $newOwnerId, ?int $previousOwnerId): void
+    {
+        // Update database
+        $this->DbQuery(
+            "UPDATE bonus_token SET player_id = $newOwnerId WHERE token_type = '$tokenType'"
+        );
+        
+        // Get friendly name for notification
+        $tokenNames = [
+            'moon' => clienttranslate('Moon'),
+            'comet' => clienttranslate('Comet'),
+            'blue_planet' => clienttranslate('Blue Planet'),
+            'green_planet' => clienttranslate('Green Planet'),
+            'red_planet' => clienttranslate('Red Planet'),
+            'tan_planet' => clienttranslate('Tan Planet'),
+        ];
+        $tokenName = $tokenNames[$tokenType] ?? $tokenType;
+        
+        // Notify all players
+        if ($previousOwnerId === null) {
+            $this->notify->all(
+                'bonusTokenClaimed',
+                clienttranslate('${player_name} claims the ${token_name} bonus token!'),
+                [
+                    'player_id' => $newOwnerId,
+                    'player_name' => $this->getPlayerNameById($newOwnerId),
+                    'token_type' => $tokenType,
+                    'token_name' => $tokenName,
+                    'previous_owner_id' => null,
+                ]
+            );
+        } else {
+            $this->notify->all(
+                'bonusTokenStolen',
+                clienttranslate('${player_name} takes the ${token_name} bonus token from ${previous_player_name}!'),
+                [
+                    'player_id' => $newOwnerId,
+                    'player_name' => $this->getPlayerNameById($newOwnerId),
+                    'token_type' => $tokenType,
+                    'token_name' => $tokenName,
+                    'previous_owner_id' => $previousOwnerId,
+                    'previous_player_name' => $this->getPlayerNameById($previousOwnerId),
+                ]
+            );
+        }
+    }
+    
+    /**
+     * Get the counter property name for a token type
+     */
+    private function getCounterForTokenType(string $tokenType): ?string
+    {
+        $map = [
+            'moon' => 'moon_count',
+            'comet' => 'comet_count',
+            'blue_planet' => 'blue_planet_count',
+            'green_planet' => 'green_planet_count',
+            'red_planet' => 'red_planet_count',
+            'tan_planet' => 'tan_planet_count',
+        ];
+        return $map[$tokenType] ?? null;
+    }
+    
+    /**
+     * Calculate bonus token points for a player (5 points per token held)
+     */
+    public function calculateBonusTokenScore(int $playerId): int
+    {
+        $count = $this->getUniqueValueFromDb(
+            "SELECT COUNT(*) FROM bonus_token WHERE player_id = $playerId"
+        );
+        return (int)$count * 5;
     }
 
 }
