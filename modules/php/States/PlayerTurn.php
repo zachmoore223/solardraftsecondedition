@@ -42,6 +42,20 @@ class PlayerTurn extends GameState
             }
         }
         
+        // Clear play type restrictions that belonged to a different player
+        $cometOnlyPlay = $this->game->getGameStateValue('comet_only_play');
+        if ($cometOnlyPlay != $activePlayerId && $cometOnlyPlay > 0) {
+            $this->game->setGameStateValue('comet_only_play', 0);
+        }
+        $moonOnlyPlay = $this->game->getGameStateValue('moon_only_play');
+        if ($moonOnlyPlay != $activePlayerId && $moonOnlyPlay > 0) {
+            $this->game->setGameStateValue('moon_only_play', 0);
+        }
+        $planetOnlyPlay = $this->game->getGameStateValue('planet_only_play');
+        if ($planetOnlyPlay != $activePlayerId && $planetOnlyPlay > 0) {
+            $this->game->setGameStateValue('planet_only_play', 0);
+        }
+        
         // Only grant starting action if this is a NEW turn (player changed)
         // Check if this is the same player as last turn
         $lastTurnPlayer = $this->game->getGameStateValue('last_turn_player');
@@ -311,6 +325,14 @@ class PlayerTurn extends GameState
         if ($playActionsFinal <= 100) { // Only cap normal play actions, not Shell Star's 999
             $this->game->play_actions->set($playerId, max(0, $playActionsFinal));
         }
+        
+        // Clear play type restrictions when play_actions reaches 0
+        if ($actionType === 'play') {
+            $remainingPlayActions = $this->game->play_actions->get($playerId);
+            if ($remainingPlayActions == 0) {
+                $this->game->clearPlayRestrictions();
+            }
+        }
     }
 
     /*******************
@@ -335,6 +357,28 @@ class PlayerTurn extends GameState
         if ($shellStarActive == $activePlayerId) {
             if ($card['type'] !== 'moon') {
                 throw new UserException("Shell Star ability is active - you can only play MOONS.");
+            }
+        }
+        
+        // Check play type restrictions (from card abilities like Cometviewer, Qixx, etc.)
+        $cometOnlyPlay = $this->game->getGameStateValue('comet_only_play');
+        if ($cometOnlyPlay == $activePlayerId) {
+            if ($card['type'] !== 'comet') {
+                throw new UserException("You can only play COMETS with this ability.");
+            }
+        }
+        
+        $moonOnlyPlay = $this->game->getGameStateValue('moon_only_play');
+        if ($moonOnlyPlay == $activePlayerId) {
+            if ($card['type'] !== 'moon') {
+                throw new UserException("You can only play MOONS with this ability.");
+            }
+        }
+        
+        $planetOnlyPlay = $this->game->getGameStateValue('planet_only_play');
+        if ($planetOnlyPlay == $activePlayerId) {
+            if ($card['type'] !== 'planet') {
+                throw new UserException("You can only play PLANETS with this ability.");
             }
         }
         
@@ -918,6 +962,9 @@ class PlayerTurn extends GameState
         $this->game->draft_actions->set($activePlayerId, 0);
         $this->game->draw_actions->set($activePlayerId, 0);
         $this->game->play_actions->set($activePlayerId, 0);
+        
+        // Clear all play type restrictions
+        $this->game->clearPlayRestrictions();
 
         // Notify all players about the choice to pass.
         $this->notify->all("pass", clienttranslate('${player_name} passes'), [

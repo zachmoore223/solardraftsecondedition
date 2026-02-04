@@ -152,8 +152,8 @@ class Game extends \Bga\GameFramework\Table
             90 => [ 'name'=>'Gigamoon',  'points'=>6, 'ability'=>'May only be played on your most recently played planet.' ],
             91 => [ 'name'=>'Longway',  'points'=>4, 'ability'=>'Score 1 point for each COMET adjacent to the planet this moon orbits.' ],
             92 => [ 'name'=>'New1',  'points'=>2, 'ability'=>'PLAY A COMET.' ],
-            93 => [ 'name'=>'New2',  'points'=>2, 'ability'=>'DRAFT A CARD.' ],
-            94 => [ 'name'=>'New3',  'points'=>4, 'ability'=>'DRAW A CARD.' ],
+            93 => [ 'name'=>'New2',  'points'=>2, 'ability'=>'DRAW A CARD.' ],
+            94 => [ 'name'=>'New3',  'points'=>4, 'ability'=>'DARFT A CARD.' ],
             95 => [ 'name'=>'New4',  'points'=>1, 'ability'=>'Score 1 point for each RED planet.' ],
             96 => [ 'name'=>'New5',  'points'=>1, 'ability'=>'Score 1 point for each BLUE planet.' ],
             97 => [ 'name'=>'New6',  'points'=>1, 'ability'=>'Score 1 point for each GREEN planet.' ],
@@ -194,6 +194,9 @@ class Game extends \Bga\GameFramework\Table
             'last_card_drawer' => 14, // Player ID who drew the last card
             'draw_from_discard_only' => 15, // Player ID who must draw from discard pile (0 = none)
             'diluna_active' => 16, // Card ID of Diluna planet (moons must be played onto it), 0 = none
+            'comet_only_play' => 17, // Player ID who can only play comets (0 = no restriction)
+            'moon_only_play' => 18, // Player ID who can only play moons (0 = no restriction)
+            'planet_only_play' => 19, // Player ID who can only play planets (0 = no restriction)
         ]); // mandatory, even if the array is empty
 
         $this->blue_planet_count = $this->counterFactory->createPlayerCounter('blue_planet_count');
@@ -1023,19 +1026,18 @@ class Game extends \Bga\GameFramework\Table
         
         $score = 0;
         
-        // Check for moon unlock
+        // Check for moon unlock - get the moons on this planet
         $moons = $this->getMoonsForPlanet($planet['id'], $tableau['moons']);
         $hasMoonUnlock = false;
-        $moonUnlockAbility = null;
+        $moonUnlockPoints = null;
         
         if (($cardInfo['moonUnlock'] ?? false) && count($moons) >= ($cardInfo['moonUnlockReq'] ?? 0)) {
             $hasMoonUnlock = true;
-            $moonUnlockAbility = $cardInfo['moonUnlockAbility'] ?? null;
-        }
-        
-        // Use moon unlock ability if available
-        if ($hasMoonUnlock && $moonUnlockAbility) {
-            $ability = $moonUnlockAbility;
+            // Parse the moon unlock points from text like "Score 10 points instead."
+            $moonUnlockAbility = $cardInfo['moonUnlockAbility'] ?? '';
+            if (preg_match('/(\d+) points?/', $moonUnlockAbility, $matches)) {
+                $moonUnlockPoints = (int)$matches[1];
+            }
         }
         
         // Check for Doagain moon (doubles planet ability)
@@ -1049,11 +1051,12 @@ class Game extends \Bga\GameFramework\Table
         }
         
         // Parse and score ability
+        // Note: $hasMoonUnlock and $moonUnlockPoints are used to apply moon unlock bonuses
         if (strpos($ability, 'ADJACENT COMET') !== false) {
             $adjacentComets = $this->getAdjacentComets($planet, $tableau['comets']);
             $count = count($adjacentComets);
             if (preg_match('/(\d+) points? for each/', $ability, $matches)) {
-                $pointsPer = (int)$matches[1];
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'ADJACENT LARGE PLANET') !== false) {
@@ -1066,7 +1069,7 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
             if (preg_match('/(\d+) points? for each/', $ability, $matches)) {
-                $pointsPer = (int)$matches[1];
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'ADJACENT SMALL PLANET') !== false) {
@@ -1079,7 +1082,7 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
             if (preg_match('/(\d+) points? for each/', $ability, $matches)) {
-                $pointsPer = (int)$matches[1];
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'ADJACENT MEDIUM PLANET') !== false) {
@@ -1092,76 +1095,80 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
             if (preg_match('/(\d+) points? for each/', $ability, $matches)) {
-                $pointsPer = (int)$matches[1];
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'MOST BLUE PLANETS') !== false) {
             if ($this->hasMostOfType($playerId, 'color', 'BLUE')) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'MOST GREEN PLANETS') !== false) {
             if ($this->hasMostOfType($playerId, 'color', 'GREEN')) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'MOST RED PLANETS') !== false) {
             if ($this->hasMostOfType($playerId, 'color', 'RED')) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'MOST TAN PLANETS') !== false) {
             if ($this->hasMostOfType($playerId, 'color', 'TAN')) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'MOST MOONS') !== false) {
             if ($this->hasMostOfType($playerId, 'total_moons', '')) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'MOST COMETS') !== false) {
             if ($this->hasMostOfType($playerId, 'total_comets', '')) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'MOST PLANETS') !== false) {
             if ($this->hasMostOfType($playerId, 'total_planets', '')) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'MOST total RINGS') !== false) {
             if ($this->hasMostOfType($playerId, 'total_rings', '')) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'BLUE PLANET') !== false && strpos($ability, 'for each') !== false) {
             $count = $this->countCardsByType($playerId, 'color', 'BLUE');
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'GREEN PLANET') !== false && strpos($ability, 'for each') !== false) {
             $count = $this->countCardsByType($playerId, 'color', 'GREEN');
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'RED PLANET') !== false && strpos($ability, 'for each') !== false) {
             $count = $this->countCardsByType($playerId, 'color', 'RED');
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'TAN PLANET') !== false && strpos($ability, 'for each') !== false) {
             $count = $this->countCardsByType($playerId, 'color', 'TAN');
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'PLANET WITH RING') !== false) {
             $count = 0;
@@ -1172,27 +1179,32 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'COMET') !== false && strpos($ability, 'for each') !== false) {
             $count = count($tableau['comets']);
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'LARGE PLANET') !== false && strpos($ability, 'for each') !== false) {
             $count = $this->countCardsByType($playerId, 'size', 'LARGE');
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'SMALL PLANET') !== false && strpos($ability, 'for each') !== false) {
             $count = $this->countCardsByType($playerId, 'size', 'SMALL');
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'MEDIUM PLANET') !== false && strpos($ability, 'for each') !== false) {
             $count = $this->countCardsByType($playerId, 'size', 'MEDIUM');
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'PLANET BEFORE') !== false) {
             $planetOrder = $planet['planet_order'] ?? 0;
@@ -1204,7 +1216,8 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'PLANET AFTER') !== false) {
             $planetOrder = $planet['planet_order'] ?? 0;
@@ -1216,12 +1229,13 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'MOON orbiting this planet') !== false) {
             $count = count($moons);
             if (preg_match('/(\d+) points? for each/', $ability, $matches)) {
-                $pointsPer = (int)$matches[1];
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'PLANET with AT LEAST 1 MOON') !== false) {
@@ -1233,55 +1247,55 @@ class Game extends \Bga\GameFramework\Table
                 }
             }
             if (preg_match('/(\d+) points? for each/', $ability, $matches)) {
-                $pointsPer = (int)$matches[1];
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'ONLY MEDIUM PLANET') !== false) {
             $mediumCount = $this->countCardsByType($playerId, 'size', 'MEDIUM');
             if ($mediumCount === 1) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'ONLY LARGE PLANET') !== false) {
             $largeCount = $this->countCardsByType($playerId, 'size', 'LARGE');
             if ($largeCount === 1) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'exactly 2 MOONS') !== false) {
             if (count($moons) === 2) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'at least 8 PLANETS') !== false) {
             $planetCount = count($tableau['planets']);
             if ($planetCount >= 8) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'SEVENTH PLANET') !== false) {
             $planetOrder = $planet['planet_order'] ?? 0;
             if ($planetOrder === 7) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'EIGHTH PLANET') !== false) {
             $planetOrder = $planet['planet_order'] ?? 0;
             if ($planetOrder === 8) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'NINTH PLANET') !== false) {
             $planetOrder = $planet['planet_order'] ?? 0;
             if ($planetOrder === 9) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'LAST PLANET') !== false) {
@@ -1295,20 +1309,22 @@ class Game extends \Bga\GameFramework\Table
             $planetOrder = $planet['planet_order'] ?? 0;
             if ($planetOrder === $maxOrder && $maxOrder > 0) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'every 2 PLANETS') !== false) {
             $planetCount = count($tableau['planets']);
             $count = (int)floor($planetCount / 2);
             if (preg_match('/(\d+) point/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'every 3 COMETS') !== false) {
             $cometCount = count($tableau['comets']);
             $count = (int)floor($cometCount / 3);
             if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'every other 1 POINT VALUE PLANET') !== false) {
             $count = 0;
@@ -1320,7 +1336,8 @@ class Game extends \Bga\GameFramework\Table
             }
             $count = (int)floor($count / 2); // Every other
             if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                $score += (int)$matches[1] * $count;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $count;
             }
         } elseif (strpos($ability, 'every set of planets you have of each color') !== false) {
             // Amaterasu - Score points for every complete set (one of each color)
@@ -1331,7 +1348,8 @@ class Game extends \Bga\GameFramework\Table
             // A "set" is one planet of each color, so count = minimum of all colors
             $setCount = min($blueCount, $greenCount, $redCount, $tanCount);
             if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                $score += (int)$matches[1] * $setCount;
+                $pointsPer = $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
+                $score += $pointsPer * $setCount;
             }
         } elseif (strpos($ability, 'only has three different colored planets') !== false) {
             $colors = [];
@@ -1344,7 +1362,7 @@ class Game extends \Bga\GameFramework\Table
             }
             if (count($colors) === 3) {
                 if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                    $score += (int)$matches[1];
+                    $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                 }
             }
         } elseif (strpos($ability, 'ONLY PLANET with AT LEAST 3 RINGS') !== false) {
@@ -1359,7 +1377,7 @@ class Game extends \Bga\GameFramework\Table
                 $pInfo = $this->getCardInfo($planet);
                 if (($pInfo['rings'] ?? 0) >= 3) {
                     if (preg_match('/(\d+) points?/', $ability, $matches)) {
-                        $score += (int)$matches[1];
+                        $score += $hasMoonUnlock && $moonUnlockPoints ? $moonUnlockPoints : (int)$matches[1];
                     }
                 }
             }
@@ -1602,11 +1620,67 @@ class Game extends \Bga\GameFramework\Table
      */
     public function calculatePlayerScore(int $playerId): int
     {
+        $breakdown = $this->calculatePlayerScoreWithBreakdown($playerId);
+        return $breakdown['total'];
+    }
+    
+    /**
+     * Calculate full score for a player with detailed breakdown for debugging
+     */
+    public function calculatePlayerScoreWithBreakdown(int $playerId): array
+    {
+        $breakdown = [
+            'basic_points' => [
+                'planets' => [],
+                'moons' => [],
+                'comets' => [],
+                'subtotal' => 0,
+            ],
+            'giganta_penalty' => [],
+            'planet_abilities' => [],
+            'moon_abilities' => [],
+            'rahu_bonus' => [],
+            'bonus_tokens' => [],
+            'total' => 0,
+        ];
+        
         // Start with basic points
-        $score = $this->calculateBasicScore($playerId);
+        $basicScore = $this->calculateBasicScore($playerId);
+        $breakdown['basic_points']['subtotal'] = $basicScore;
         
         // Get tableau structure
         $tableau = $this->getTableauCards($playerId);
+        
+        // Track basic points per card
+        foreach ($tableau['planets'] as $planet) {
+            $cardInfo = $this->getCardInfo($planet);
+            $points = (int)($cardInfo['points'] ?? 0);
+            $breakdown['basic_points']['planets'][] = [
+                'name' => $cardInfo['name'] ?? 'Unknown',
+                'id' => $planet['id'],
+                'points' => $points,
+            ];
+        }
+        foreach ($tableau['moons'] as $moon) {
+            $cardInfo = $this->getCardInfo($moon);
+            $points = (int)($cardInfo['points'] ?? 0);
+            $breakdown['basic_points']['moons'][] = [
+                'name' => $cardInfo['name'] ?? 'Unknown',
+                'id' => $moon['id'],
+                'points' => $points,
+            ];
+        }
+        foreach ($tableau['comets'] as $comet) {
+            $cardInfo = $this->getCardInfo($comet);
+            $points = (int)($cardInfo['points'] ?? 0);
+            $breakdown['basic_points']['comets'][] = [
+                'name' => $cardInfo['name'] ?? 'Unknown',
+                'id' => $comet['id'],
+                'points' => $points,
+            ];
+        }
+        
+        $score = $basicScore;
         
         // Find planets affected by Giganta (next planet scores no points)
         $gigantaAffectedPlanets = [];
@@ -1631,7 +1705,12 @@ class Game extends \Bga\GameFramework\Table
             $affectedPlanet = $affected['planet'];
             $affectedInfo = $this->getCardInfo($affectedPlanet);
             $affectedPoints = (int)($affectedInfo['points'] ?? 0);
-            $score -= $affectedPoints; // Remove basic points
+            $score -= $affectedPoints;
+            $breakdown['giganta_penalty'][] = [
+                'card' => $affectedInfo['name'] ?? 'Unknown',
+                'points' => -$affectedPoints,
+                'reason' => 'Giganta nullifies basic points',
+            ];
             
             // Also remove points from moons/comets attached to this planet
             foreach ($tableau['moons'] as $moon) {
@@ -1639,6 +1718,11 @@ class Game extends \Bga\GameFramework\Table
                     $moonInfo = $this->getCardInfo($moon);
                     $moonPoints = (int)($moonInfo['points'] ?? 0);
                     $score -= $moonPoints;
+                    $breakdown['giganta_penalty'][] = [
+                        'card' => $moonInfo['name'] ?? 'Unknown',
+                        'points' => -$moonPoints,
+                        'reason' => 'Moon on Giganta-affected planet',
+                    ];
                 }
             }
             foreach ($tableau['comets'] as $comet) {
@@ -1646,26 +1730,68 @@ class Game extends \Bga\GameFramework\Table
                     $cometInfo = $this->getCardInfo($comet);
                     $cometPoints = (int)($cometInfo['points'] ?? 0);
                     $score -= $cometPoints;
+                    $breakdown['giganta_penalty'][] = [
+                        'card' => $cometInfo['name'] ?? 'Unknown',
+                        'points' => -$cometPoints,
+                        'reason' => 'Comet on Giganta-affected planet',
+                    ];
                 }
             }
         }
         
         // Score planet abilities (start with depth 0)
         foreach ($tableau['planets'] as $planet) {
+            $cardInfo = $this->getCardInfo($planet);
             // Skip ability scoring for Giganta-affected planets
             if (isset($gigantaAffectedPlanets[$planet['id']])) {
+                $breakdown['planet_abilities'][] = [
+                    'name' => $cardInfo['name'] ?? 'Unknown',
+                    'ability' => $cardInfo['ability'] ?? '-',
+                    'points' => 0,
+                    'reason' => 'Skipped (Giganta-affected)',
+                ];
                 continue;
             }
-            $score += $this->scorePlanetAbility($planet, $tableau, $playerId, 0);
+            $abilityPoints = $this->scorePlanetAbility($planet, $tableau, $playerId, 0);
+            $score += $abilityPoints;
+            
+            // Check for moon unlock
+            $moons = $this->getMoonsForPlanet($planet['id'], $tableau['moons']);
+            $hasMoonUnlock = false;
+            if (($cardInfo['moonUnlock'] ?? false) && count($moons) >= ($cardInfo['moonUnlockReq'] ?? 0)) {
+                $hasMoonUnlock = true;
+            }
+            
+            $breakdown['planet_abilities'][] = [
+                'name' => $cardInfo['name'] ?? 'Unknown',
+                'ability' => $cardInfo['ability'] ?? '-',
+                'points' => $abilityPoints,
+                'moon_unlock' => $hasMoonUnlock,
+                'moon_unlock_ability' => $hasMoonUnlock ? ($cardInfo['moonUnlockAbility'] ?? '') : null,
+                'moons_on_planet' => count($moons),
+            ];
         }
         
         // Score moon abilities (skip moons on Giganta-affected planets)
         foreach ($tableau['moons'] as $moon) {
+            $moonInfo = $this->getCardInfo($moon);
             $moonPlanetId = $moon['parent_id'] ?? null;
             if ($moonPlanetId && isset($gigantaAffectedPlanets[$moonPlanetId])) {
-                continue; // Skip moons on affected planets
+                $breakdown['moon_abilities'][] = [
+                    'name' => $moonInfo['name'] ?? 'Unknown',
+                    'ability' => $moonInfo['ability'] ?? '-',
+                    'points' => 0,
+                    'reason' => 'Skipped (on Giganta-affected planet)',
+                ];
+                continue;
             }
-            $score += $this->scoreMoonAbility($moon, $tableau, $playerId);
+            $abilityPoints = $this->scoreMoonAbility($moon, $tableau, $playerId);
+            $score += $abilityPoints;
+            $breakdown['moon_abilities'][] = [
+                'name' => $moonInfo['name'] ?? 'Unknown',
+                'ability' => $moonInfo['ability'] ?? '-',
+                'points' => $abilityPoints,
+            ];
         }
         
         // Handle Rahu - triple adjacent comet points
@@ -1677,15 +1803,37 @@ class Game extends \Bga\GameFramework\Table
                     $cometInfo = $this->getCardInfo($comet);
                     $cometPoints = (int)($cometInfo['points'] ?? 0);
                     // Add 2x more (already counted 1x in basic score)
-                    $score += $cometPoints * 2;
+                    $rahuBonus = $cometPoints * 2;
+                    $score += $rahuBonus;
+                    $breakdown['rahu_bonus'][] = [
+                        'comet' => $cometInfo['name'] ?? 'Unknown',
+                        'base_points' => $cometPoints,
+                        'bonus' => $rahuBonus,
+                        'reason' => 'Rahu triples adjacent comet points (+2x)',
+                    ];
                 }
             }
         }
         
-        // Add bonus token points (5 points per token held)
-        $score += $this->calculateBonusTokenScore($playerId);
+        // Add bonus token points (7 pts for planet tokens, 4 pts for moon/comet tokens)
+        $tokens = $this->getCollectionFromDb(
+            "SELECT token_type FROM bonus_token WHERE player_id = $playerId"
+        );
+        $bonusTokenScore = 0;
+        foreach ($tokens as $token) {
+            $tokenType = $token['token_type'];
+            $tokenPoints = ($tokenType === 'moon' || $tokenType === 'comet') ? 4 : 7;
+            $bonusTokenScore += $tokenPoints;
+            $breakdown['bonus_tokens'][] = [
+                'type' => $tokenType,
+                'points' => $tokenPoints,
+            ];
+        }
+        $score += $bonusTokenScore;
         
-        return $score;
+        $breakdown['total'] = $score;
+        
+        return $breakdown;
     }
 
     /**
@@ -1709,6 +1857,17 @@ class Game extends \Bga\GameFramework\Table
      * ACTION HELPERS
      *************************************************/
     // In Game.php, add helper functions:
+
+    /**
+     * Clear all play type restrictions to avoid conflicts when setting a new one
+     */
+    public function clearPlayRestrictions(): void
+    {
+        $this->setGameStateValue('comet_only_play', 0);
+        $this->setGameStateValue('moon_only_play', 0);
+        $this->setGameStateValue('planet_only_play', 0);
+        $this->setGameStateValue('diluna_active', 0);
+    }
 
     public function grantDraftAction(int $playerId, int $count = 1)
     {
@@ -1814,14 +1973,17 @@ class Game extends \Bga\GameFramework\Table
         if ($cardType === 'planet') {
             switch ($cardNum) {
                 case 8: // Cometviewer: When played, you may immediately PLAY A COMET
+                    $this->clearPlayRestrictions();
+                    $this->setGameStateValue('comet_only_play', $playerId);
                     $this->grantPlayAction($playerId, 1);
                     $this->notify->all(
-                        'actionGranted',
+                        'playRestriction',
                         clienttranslate('${player_name} may play a comet (Cometviewer ability)'),
                         [
                             'player_id' => $playerId,
                             'player_name' => $this->getPlayerNameById($playerId),
                             'action_type' => 'play',
+                            'restriction' => 'comet',
                             'new_value' => $this->play_actions->get($playerId)
                         ]
                     );
@@ -1829,6 +1991,7 @@ class Game extends \Bga\GameFramework\Table
                     
                 case 9: // Diluna: When played, you may immediately PLAY up TWO MOONS onto this planet
                     // Set flag to restrict plays to moons on this specific planet
+                    $this->clearPlayRestrictions();
                     $this->setGameStateValue('diluna_active', (int)$card['id']);
                     $this->grantPlayAction($playerId, 2);
                     $this->notify->all(
@@ -1887,36 +2050,42 @@ class Game extends \Bga\GameFramework\Table
             // Now process the moon's own ability
             switch ($cardNum) {
                 case 92: // New1: PLAY A COMET
+                    $this->clearPlayRestrictions();
+                    $this->setGameStateValue('comet_only_play', $playerId);
                     $this->grantPlayAction($playerId, 1);
                     $this->notify->all(
-                        'actionGranted',
+                        'playRestriction',
                         clienttranslate('${player_name} may play a comet (moon ability)'),
                         [
                             'player_id' => $playerId,
                             'player_name' => $this->getPlayerNameById($playerId),
                             'action_type' => 'play',
+                            'restriction' => 'comet',
                             'new_value' => $this->play_actions->get($playerId)
                         ]
                     );
                     break;
                     
                 case 93: // New2: DRAFT A CARD
-                    $this->grantDraftAction($playerId, 1);
-                    break;
-                    
-                case 94: // New3: DRAW A CARD
                     $this->grantDrawAction($playerId, 1);
                     break;
                     
+                case 94: // New3: DRAW A CARD
+                    $this->grantDraftAction($playerId, 1);
+                    break;
+                    
                 case 102: // Qixx: PLAY A MOON
+                    $this->clearPlayRestrictions();
+                    $this->setGameStateValue('moon_only_play', $playerId);
                     $this->grantPlayAction($playerId, 1);
                     $this->notify->all(
-                        'actionGranted',
+                        'playRestriction',
                         clienttranslate('${player_name} may play a moon (Qixx ability)'),
                         [
                             'player_id' => $playerId,
                             'player_name' => $this->getPlayerNameById($playerId),
                             'action_type' => 'play',
+                            'restriction' => 'moon',
                             'new_value' => $this->play_actions->get($playerId)
                         ]
                     );
@@ -2095,8 +2264,20 @@ class Game extends \Bga\GameFramework\Table
                 break;
             
             case 83: // Comet23: PLAY up to TWO PLANETS
-                // TODO: Restrict to planet-only plays
+                $this->clearPlayRestrictions();
+                $this->setGameStateValue('planet_only_play', $playerId);
                 $this->grantPlayAction($playerId, 2);
+                $this->notify->all(
+                    'playRestriction',
+                    clienttranslate('${player_name} may play up to 2 planets'),
+                    [
+                        'player_id' => $playerId,
+                        'player_name' => $this->getPlayerNameById($playerId),
+                        'action_type' => 'play',
+                        'restriction' => 'planet',
+                        'new_value' => $this->play_actions->get($playerId)
+                    ]
+                );
                 break;
             
             case 84: // Comet24: REFRESH A SUN ABILITY
@@ -2264,14 +2445,27 @@ class Game extends \Bga\GameFramework\Table
     }
     
     /**
-     * Calculate bonus token points for a player (5 points per token held)
+     * Calculate bonus token points for a player
+     * Planet tokens (blue, green, red, tan) = 7 points each
+     * Moon and comet tokens = 4 points each
      */
     public function calculateBonusTokenScore(int $playerId): int
     {
-        $count = $this->getUniqueValueFromDb(
-            "SELECT COUNT(*) FROM bonus_token WHERE player_id = $playerId"
+        $tokens = $this->getCollectionFromDb(
+            "SELECT token_type FROM bonus_token WHERE player_id = $playerId"
         );
-        return (int)$count * 5;
+        
+        $score = 0;
+        foreach ($tokens as $token) {
+            $tokenType = $token['token_type'];
+            if ($tokenType === 'moon' || $tokenType === 'comet') {
+                $score += 4;
+            } else {
+                // Planet tokens (blue_planet, green_planet, red_planet, tan_planet)
+                $score += 7;
+            }
+        }
+        return $score;
     }
 
 }

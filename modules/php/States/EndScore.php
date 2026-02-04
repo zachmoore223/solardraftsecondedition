@@ -32,7 +32,7 @@ class EndScore extends \Bga\GameFramework\States\GameState
         
         // Notify clients of updated scores
         $players = $this->game->getCollectionFromDb(
-            "SELECT player_id, player_score FROM player"
+            "SELECT player_id, player_score, player_name FROM player"
         );
         
         foreach ($players as $playerId => $player) {
@@ -45,6 +45,24 @@ class EndScore extends \Bga\GameFramework\States\GameState
                 ]
             );
         }
+        
+        // Send detailed scoring breakdown for debugging
+        $allBreakdowns = [];
+        foreach ($players as $playerId => $player) {
+            $breakdown = $this->game->calculatePlayerScoreWithBreakdown((int)$playerId);
+            $allBreakdowns[(int)$playerId] = [
+                'player_name' => $player['player_name'],
+                'breakdown' => $breakdown,
+            ];
+        }
+        
+        $this->game->notify->all(
+            'scoringBreakdown',
+            '',
+            [
+                'breakdowns' => $allBreakdowns
+            ]
+        );
 
         return ST_END_GAME;
     }

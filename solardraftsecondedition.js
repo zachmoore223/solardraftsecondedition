@@ -637,27 +637,27 @@ define([
 
                 </div>
                 <div class="bonus-tokens-container" id="bonus-tokens-${playerId}">
-                    <div class="bonus-token" id="bonus-blue_planet-${playerId}" data-token="blue_planet" title="Blue Planet Majority (5 pts)">
+                    <div class="bonus-token" id="bonus-blue_planet-${playerId}" data-token="blue_planet" title="Blue Planet Majority (7 pts)">
                         <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-bluePlanet.png"/>
                         <span class="bonus-token-star">★</span>
                     </div>
-                    <div class="bonus-token" id="bonus-green_planet-${playerId}" data-token="green_planet" title="Green Planet Majority (5 pts)">
+                    <div class="bonus-token" id="bonus-green_planet-${playerId}" data-token="green_planet" title="Green Planet Majority (7 pts)">
                         <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-greenPlanet.png"/>
                         <span class="bonus-token-star">★</span>
                     </div>
-                    <div class="bonus-token" id="bonus-red_planet-${playerId}" data-token="red_planet" title="Red Planet Majority (5 pts)">
+                    <div class="bonus-token" id="bonus-red_planet-${playerId}" data-token="red_planet" title="Red Planet Majority (7 pts)">
                         <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-redPlanet.png"/>
                         <span class="bonus-token-star">★</span>
                     </div>
-                    <div class="bonus-token" id="bonus-tan_planet-${playerId}" data-token="tan_planet" title="Tan Planet Majority (5 pts)">
+                    <div class="bonus-token" id="bonus-tan_planet-${playerId}" data-token="tan_planet" title="Tan Planet Majority (7 pts)">
                         <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-tanPlanet.png"/>
                         <span class="bonus-token-star">★</span>
                     </div>
-                    <div class="bonus-token" id="bonus-comet-${playerId}" data-token="comet" title="Comet Majority (5 pts)">
+                    <div class="bonus-token" id="bonus-comet-${playerId}" data-token="comet" title="Comet Majority (4 pts)">
                         <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-comet.png"/>
                         <span class="bonus-token-star">★</span>
                     </div>
-                    <div class="bonus-token" id="bonus-moon-${playerId}" data-token="moon" title="Moon Majority (5 pts)">
+                    <div class="bonus-token" id="bonus-moon-${playerId}" data-token="moon" title="Moon Majority (4 pts)">
                         <img class="bonus-token-icon" src="${g_gamethemeurl}img/counter-moon.png"/>
                         <span class="bonus-token-star">★</span>
                     </div>
@@ -2786,6 +2786,163 @@ define([
       if (this.gamedatas && this.gamedatas.players && this.gamedatas.players[playerId]) {
         this.gamedatas.players[playerId].score = score.toString();
       }
+    },
+
+    /*******************************
+    *     SCORING BREAKDOWN        *
+    *******************************/
+    notif_scoringBreakdown: function (notif) {
+      console.log("=== SCORING BREAKDOWN (DEBUG) ===");
+      console.log(notif.breakdowns);
+      
+      // Build HTML for persistent modal
+      let modalHtml = '<div id="scoring-breakdown-modal" class="scoring-breakdown-modal">';
+      modalHtml += '<div class="scoring-breakdown-content">';
+      modalHtml += '<button class="scoring-breakdown-close" id="scoring-breakdown-close">✕</button>';
+      modalHtml += '<h2>Scoring Breakdown</h2>';
+      
+      for (const playerId in notif.breakdowns) {
+        const data = notif.breakdowns[playerId];
+        const playerName = data.player_name;
+        const b = data.breakdown;
+        
+        // Calculate subtotals
+        let planetAbilityTotal = b.planet_abilities.reduce((sum, p) => sum + p.points, 0);
+        let moonAbilityTotal = b.moon_abilities.reduce((sum, m) => sum + m.points, 0);
+        let gigantaPenalty = b.giganta_penalty.reduce((sum, g) => sum + g.points, 0);
+        let rahuBonus = b.rahu_bonus.reduce((sum, r) => sum + r.bonus, 0);
+        let tokenTotal = b.bonus_tokens.reduce((sum, t) => sum + t.points, 0);
+        
+        modalHtml += `<div class="player-breakdown">`;
+        modalHtml += `<h3>${playerName} — Total: ${b.total}</h3>`;
+        
+        // Summary row
+        modalHtml += `<div class="breakdown-summary">`;
+        modalHtml += `<span>Basic: ${b.basic_points.subtotal}</span>`;
+        if (gigantaPenalty !== 0) modalHtml += `<span>Giganta: ${gigantaPenalty}</span>`;
+        modalHtml += `<span>Planet Abilities: ${planetAbilityTotal}</span>`;
+        modalHtml += `<span>Moon Abilities: ${moonAbilityTotal}</span>`;
+        if (rahuBonus > 0) modalHtml += `<span>Rahu: +${rahuBonus}</span>`;
+        modalHtml += `<span>Bonus Tokens: ${tokenTotal}</span>`;
+        modalHtml += `</div>`;
+        
+        // Detailed sections (collapsible)
+        modalHtml += `<details class="breakdown-section">`;
+        modalHtml += `<summary>Basic Points (${b.basic_points.subtotal})</summary>`;
+        modalHtml += `<div class="breakdown-details">`;
+        if (b.basic_points.planets.length > 0) {
+          modalHtml += `<div class="breakdown-category"><strong>Planets:</strong>`;
+          b.basic_points.planets.forEach(p => {
+            modalHtml += `<div class="breakdown-item">${p.name}: ${p.points}</div>`;
+          });
+          modalHtml += `</div>`;
+        }
+        if (b.basic_points.moons.length > 0) {
+          modalHtml += `<div class="breakdown-category"><strong>Moons:</strong>`;
+          b.basic_points.moons.forEach(m => {
+            modalHtml += `<div class="breakdown-item">${m.name}: ${m.points}</div>`;
+          });
+          modalHtml += `</div>`;
+        }
+        if (b.basic_points.comets.length > 0) {
+          modalHtml += `<div class="breakdown-category"><strong>Comets:</strong>`;
+          b.basic_points.comets.forEach(c => {
+            modalHtml += `<div class="breakdown-item">${c.name}: ${c.points}</div>`;
+          });
+          modalHtml += `</div>`;
+        }
+        modalHtml += `</div></details>`;
+        
+        // Giganta Penalty
+        if (b.giganta_penalty.length > 0) {
+          modalHtml += `<details class="breakdown-section">`;
+          modalHtml += `<summary>Giganta Penalty (${gigantaPenalty})</summary>`;
+          modalHtml += `<div class="breakdown-details">`;
+          b.giganta_penalty.forEach(g => {
+            modalHtml += `<div class="breakdown-item">${g.card}: ${g.points} (${g.reason})</div>`;
+          });
+          modalHtml += `</div></details>`;
+        }
+        
+        // Planet Abilities
+        modalHtml += `<details class="breakdown-section" open>`;
+        modalHtml += `<summary>Planet Abilities (${planetAbilityTotal})</summary>`;
+        modalHtml += `<div class="breakdown-details">`;
+        b.planet_abilities.forEach(p => {
+          let moonUnlockClass = p.moon_unlock ? ' moon-unlocked' : '';
+          let moonInfo = p.moon_unlock ? `<span class="moon-unlock-tag">MOON UNLOCK</span>` : '';
+          modalHtml += `<div class="breakdown-item${moonUnlockClass}">`;
+          modalHtml += `<strong>${p.name}</strong>: ${p.points} pts ${moonInfo}`;
+          modalHtml += `<div class="ability-text">"${p.ability}"</div>`;
+          if (p.moon_unlock) {
+            modalHtml += `<div class="moon-unlock-text">→ "${p.moon_unlock_ability}" (${p.moons_on_planet} moon(s))</div>`;
+          }
+          modalHtml += `</div>`;
+        });
+        modalHtml += `</div></details>`;
+        
+        // Moon Abilities
+        if (b.moon_abilities.length > 0) {
+          modalHtml += `<details class="breakdown-section">`;
+          modalHtml += `<summary>Moon Abilities (${moonAbilityTotal})</summary>`;
+          modalHtml += `<div class="breakdown-details">`;
+          b.moon_abilities.forEach(m => {
+            modalHtml += `<div class="breakdown-item">`;
+            modalHtml += `<strong>${m.name}</strong>: ${m.points} pts`;
+            modalHtml += `<div class="ability-text">"${m.ability}"</div>`;
+            modalHtml += `</div>`;
+          });
+          modalHtml += `</div></details>`;
+        }
+        
+        // Rahu Bonus
+        if (b.rahu_bonus.length > 0) {
+          modalHtml += `<details class="breakdown-section">`;
+          modalHtml += `<summary>Rahu Bonus (+${rahuBonus})</summary>`;
+          modalHtml += `<div class="breakdown-details">`;
+          b.rahu_bonus.forEach(r => {
+            modalHtml += `<div class="breakdown-item">${r.comet}: +${r.bonus} (${r.reason})</div>`;
+          });
+          modalHtml += `</div></details>`;
+        }
+        
+        // Bonus Tokens
+        if (b.bonus_tokens.length > 0) {
+          modalHtml += `<details class="breakdown-section">`;
+          modalHtml += `<summary>Bonus Tokens (${tokenTotal})</summary>`;
+          modalHtml += `<div class="breakdown-details">`;
+          b.bonus_tokens.forEach(t => {
+            modalHtml += `<div class="breakdown-item">${t.type}: ${t.points} pts</div>`;
+          });
+          modalHtml += `</div></details>`;
+        }
+        
+        modalHtml += `</div>`; // end player-breakdown
+        
+        // Also log to console for easy reference
+        console.log(`\n========== ${playerName} (Total: ${b.total}) ==========`);
+        console.log("Basic Points:", b.basic_points.subtotal);
+        console.log("Planet Abilities:", planetAbilityTotal);
+        console.log("Moon Abilities:", moonAbilityTotal);
+        if (gigantaPenalty !== 0) console.log("Giganta Penalty:", gigantaPenalty);
+        if (rahuBonus > 0) console.log("Rahu Bonus:", rahuBonus);
+        console.log("Bonus Tokens:", tokenTotal);
+        console.log("TOTAL:", b.total);
+      }
+      
+      modalHtml += '</div></div>';
+      
+      // Remove existing modal if any
+      const existingModal = document.getElementById('scoring-breakdown-modal');
+      if (existingModal) existingModal.remove();
+      
+      // Add modal to page
+      document.body.insertAdjacentHTML('beforeend', modalHtml);
+      
+      // Add close button handler
+      document.getElementById('scoring-breakdown-close').addEventListener('click', () => {
+        document.getElementById('scoring-breakdown-modal').remove();
+      });
     },
 
     /*******************************
